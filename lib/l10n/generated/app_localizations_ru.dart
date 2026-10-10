@@ -250,6 +250,9 @@ class AppLocalizationsRu extends AppLocalizations {
       'Продолжить с локальным хранением данных';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => 'Не смогли перенести ваши данные';
 
   @override

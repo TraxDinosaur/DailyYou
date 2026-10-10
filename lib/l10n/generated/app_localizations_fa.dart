@@ -243,6 +243,9 @@ class AppLocalizationsFa extends AppLocalizations {
   String get errorExternalStorageAccessContinue => 'ادامه با پایگاه داده محلی';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle =>
       'نتوانستم داده‌های شما را منتقل کنم';
 

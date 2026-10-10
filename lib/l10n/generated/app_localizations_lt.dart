@@ -256,6 +256,9 @@ class AppLocalizationsLt extends AppLocalizations {
       'Tęsti naudojant vietinę duomenų bazę';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => 'Couldn\'t Move Your Data';
 
   @override

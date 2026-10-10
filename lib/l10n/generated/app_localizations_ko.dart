@@ -242,6 +242,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get errorExternalStorageAccessContinue => '로컬 데이터베이스로 계속';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => 'Couldn\'t Move Your Data';
 
   @override

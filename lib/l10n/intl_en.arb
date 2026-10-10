@@ -99,6 +99,8 @@
   "@errorExternalStorageAccessDescription": {},
   "errorExternalStorageAccessContinue": "Continue With Local Database",
   "@errorExternalStorageAccessContinue": {},
+  "errorExternalStorageChooseLocation": "Choose Another Location",
+  "@errorExternalStorageChooseLocation": {},
   "databaseMigrationErrorTitle": "Couldn't Move Your Data",
   "@databaseMigrationErrorTitle": {},
   "databaseMigrationErrorDescription": "Your entries are safe but couldn't be moved to the app's storage.\n\nTry again, and report the issue if it keeps happening.",

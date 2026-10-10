@@ -249,6 +249,9 @@ class AppLocalizationsUk extends AppLocalizations {
       'Використовувати натомість локальне сховище';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => 'Не вдалося перемістити ваші дані';
 
   @override

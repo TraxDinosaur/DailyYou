@@ -462,6 +462,12 @@ abstract class AppLocalizations {
   /// **'Continue With Local Database'**
   String get errorExternalStorageAccessContinue;
 
+  /// No description provided for @errorExternalStorageChooseLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Another Location'**
+  String get errorExternalStorageChooseLocation;
+
   /// No description provided for @databaseMigrationErrorTitle.
   ///
   /// In en, this message translates to:

@@ -244,6 +244,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Weiter mit lokaler Datenbank';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => 'Konnte Daten nicht verschieben';
 
   @override

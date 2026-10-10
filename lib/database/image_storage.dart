@@ -212,22 +212,23 @@ class ImageStorage {
   }
 
   Future<Uint8List?> getBytes(String imageName) async {
+    final cleanName = basename(imageName);
     // Fetch cache copy if present
-    var bytes = imageCache.get(imageName);
+    var bytes = imageCache.get(cleanName);
     if (bytes != null) {
       return bytes;
     }
     // Fetch local copy if present
     final internal = await internalStore();
     bytes = _nonEmpty(
-        await imgFetchPool.withResource(() => internal.read(imageName)));
+        await imgFetchPool.withResource(() => internal.read(cleanName)));
 
     final external = externalStore;
     if (bytes == null && external != null) {
-      bytes = _nonEmpty(await external.read(imageName));
+      bytes = _nonEmpty(await external.read(cleanName));
     }
     if (bytes != null) {
-      imageCache.put(imageName, bytes);
+      imageCache.put(cleanName, bytes);
     }
     return bytes;
   }

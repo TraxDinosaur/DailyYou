@@ -216,18 +216,57 @@ class _LaunchPageState extends State<LaunchPage> {
     }
   }
 
-  Future _forceLocalDatabase() async {
+  Future<void> _forceLocalDatabase() async {
+    setState(() {
+      isLoading = true;
+    });
     try {
-      await AppDatabase.instance.init(forceWithoutSync: true);
-      await _nextPage();
+      // Disconnect unavailable external storage so the app safely defaults to local storage
+      await AppDatabase.instance.resetExternalLocation();
+      await ImageStorage.instance.resetImageFolderLocation();
+
+      final initialized =
+          await AppDatabase.instance.init(forceWithoutSync: true);
+      if (initialized) {
+        await _nextPage();
+        return;
+      }
     } catch (error, stackTrace) {
       _logger.severe(
           'Forced local database initialization failed', error, stackTrace);
-      if (!mounted) return;
-      setState(() {
-        isLoading = false;
-      });
     }
+    if (!mounted) return;
+    setState(() {
+      isLoading = false;
+      _errorType = AppDatabase.instance.migrationFailed
+          ? _LaunchErrorType.migrationFailed
+          : _LaunchErrorType.externalAccess;
+    });
+  }
+
+  Future<void> _selectAnotherLocation() async {
+    setState(() {
+      isLoading = true;
+    });
+    try {
+      final outcome =
+          await AppDatabase.instance.selectExternalLocation((_) {});
+      if (outcome.succeeded) {
+        if (ImageStorage.instance.usingExternalLocation() &&
+            !await ImageStorage.instance.hasExternalLocationPermission()) {
+          await ImageStorage.instance.selectExternalLocation((_) {});
+        }
+        await _checkDatabaseConnection();
+        return;
+      }
+    } catch (error, stackTrace) {
+      _logger.severe(
+          'Selecting another external location failed', error, stackTrace);
+    }
+    if (!mounted) return;
+    setState(() {
+      isLoading = false;
+    });
   }
 
   Future<void> _nextPage() async {
@@ -243,23 +282,35 @@ class _LaunchPageState extends State<LaunchPage> {
     return Scaffold(
       extendBody: true,
       body: Center(
-        child: Card(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                title,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Card(
+            elevation: 2,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    description,
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                  const SizedBox(height: 24),
+                  ...actions,
+                ],
               ),
-              Padding(
-                padding: EdgeInsets.all(32.0),
-                child: Text(
-                  description,
-                  style: TextStyle(fontSize: 16),
-                ),
-              ),
-              ...actions,
-            ],
+            ),
           ),
         ),
       ),
@@ -291,9 +342,20 @@ class _LaunchPageState extends State<LaunchPage> {
           title: localizations.errorExternalStorageAccessTitle,
           description: localizations.errorExternalStorageAccessDescription,
           actions: [
+            FilledButton.tonal(
+              onPressed: _forceLocalDatabase,
+              child: Text(localizations.errorExternalStorageAccessContinue),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: _selectAnotherLocation,
+              child: Text(localizations.errorExternalStorageChooseLocation),
+            ),
+            const SizedBox(height: 8),
             TextButton(
-                onPressed: _forceLocalDatabase,
-                child: Text(localizations.errorExternalStorageAccessContinue)),
+              onPressed: _retryDatabaseConnection,
+              child: Text(localizations.databaseMigrationErrorRetry),
+            ),
           ],
         );
     }

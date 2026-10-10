@@ -242,6 +242,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get errorExternalStorageAccessContinue => '继续使用本地数据库';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => '无法移动你的数据';
 
   @override

@@ -244,6 +244,9 @@ class AppLocalizationsTr extends AppLocalizations {
       'Yerel Veri Tabanı ile Devam Edin';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => 'Verinizi Taşıyamadık';
 
   @override

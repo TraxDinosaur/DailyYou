@@ -56,4 +56,14 @@ void main() {
     expect(await destination.read('song_dQw4w9WgXcQ.jpg'),
         equals(bytesOf('cover_bytes')));
   });
+
+  test('restoreImages sanitizes nested paths to clean basenames', () async {
+    final backup = InMemoryFileStore();
+    await backup.write('subfolder/nested.jpg', bytesOf('nested image'));
+
+    await BackupRestoreUtils.restoreImages(backup, destination);
+
+    expect(await destination.list(), contains('nested.jpg'));
+    expect(await destination.read('nested.jpg'), equals(bytesOf('nested image')));
+  });
 }

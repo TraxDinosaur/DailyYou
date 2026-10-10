@@ -245,6 +245,9 @@ class AppLocalizationsFi extends AppLocalizations {
       'Jatka paikallisen tietokannan kanssa';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => 'Couldn\'t Move Your Data';
 
   @override

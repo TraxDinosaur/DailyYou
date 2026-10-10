@@ -36,9 +36,10 @@ class SongStorage {
 
   Future<String?> saveCover(String fileName, Uint8List bytes) async {
     try {
+      final cleanName = basename(fileName);
       final s = await store();
-      await s.write(fileName, bytes);
-      return fileName;
+      await s.write(cleanName, bytes);
+      return cleanName;
     } catch (_) {
       return null;
     }
@@ -46,8 +47,9 @@ class SongStorage {
 
   Future<Uint8List?> getBytes(String fileName) async {
     try {
+      final cleanName = basename(fileName);
       final s = await store();
-      return await s.read(fileName);
+      return await s.read(cleanName);
     } catch (_) {
       return null;
     }
@@ -55,8 +57,9 @@ class SongStorage {
 
   Future<void> deleteCover(String fileName) async {
     try {
+      final cleanName = basename(fileName);
       final s = await store();
-      await s.delete(fileName);
+      await s.delete(cleanName);
     } catch (_) {}
   }
 }

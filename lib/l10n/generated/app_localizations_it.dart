@@ -244,6 +244,9 @@ class AppLocalizationsIt extends AppLocalizations {
       'Prosegui con l\'archivio locale';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => 'Impossibile spostare i dati';
 
   @override

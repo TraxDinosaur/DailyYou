@@ -193,6 +193,9 @@ class AppLocalizationsMs extends AppLocalizations {
       'Teruskan Dengan Pangkalan Data Tempatan';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => 'Couldn\'t Move Your Data';
 
   @override

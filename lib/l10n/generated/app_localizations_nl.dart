@@ -244,6 +244,9 @@ class AppLocalizationsNl extends AppLocalizations {
       'Ga door met lokale database';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => 'Couldn\'t Move Your Data';
 
   @override

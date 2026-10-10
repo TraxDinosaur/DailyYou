@@ -245,6 +245,9 @@ class AppLocalizationsVi extends AppLocalizations {
       'Tiếp tục với Cơ sở dữ liệu cục bộ';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => 'Couldn\'t Move Your Data';
 
   @override

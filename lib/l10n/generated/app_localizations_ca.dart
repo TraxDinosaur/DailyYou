@@ -244,6 +244,9 @@ class AppLocalizationsCa extends AppLocalizations {
       'Continua amb la base de dades local';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle =>
       'No s\'han pogut moure les vostres dades';
 

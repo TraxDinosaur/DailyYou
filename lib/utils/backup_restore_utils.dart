@@ -401,32 +401,93 @@ class BackupRestoreUtils {
       final databaseBytes =
           await restoreStore.read(AppDatabase.databaseFileName);
       if (databaseBytes != null) {
-        // Import database
-        await AppDatabase.instance.close();
-        await AppDatabase.instance.internalStore
-            .write(AppDatabase.databaseFileName, databaseBytes);
-        await AppDatabase.instance.open();
-        await AppDatabase.instance.updateExternalDatabase();
-
-        // Import images. These will be garbage collected after import
-        final restoredImages =
-            LocalFileStore(join(restoreFolder.path, "Images"));
-        if (await restoredImages.isAvailable()) {
-          // Also show cleanup status here since images may take awhile
-          updateStatus(localizations.cleanUpStatus);
-          await ImageStorage.instance.whileNotSyncing(() async => restoreImages(
-              restoredImages, await ImageStorage.instance.internalStore()));
-          if (ImageStorage.instance.usingExternalLocation()) {
-            await ImageStorage.instance.syncImageFolder(true);
-          }
-          ImageStorage.instance.invalidateCache();
+        final extractedDbFile =
+            File(join(restoreFolder.path, AppDatabase.databaseFileName));
+        if (!await AppDatabase.instance.validateDatabase(extractedDbFile.path)) {
+          throw Exception('Restored database failed SQLite integrity check');
         }
 
-        final restoredSongs =
-            LocalFileStore(join(restoreFolder.path, "SongCovers"));
-        if (await restoredSongs.isAvailable()) {
-          await restoreImages(
-              restoredSongs, await SongStorage.instance.store());
+        final internalDbPath = await AppDatabase.instance.getInternalPath();
+        final preRestoreBackupPath = join(tempDir.path,
+            'pre_restore_backup_${DateTime.now().millisecondsSinceEpoch}.db');
+        if (await File(internalDbPath).exists()) {
+          await File(internalDbPath).copy(preRestoreBackupPath);
+        }
+
+        try {
+          // Import database
+          await AppDatabase.instance.close();
+          await AppDatabase.instance.internalStore
+              .write(AppDatabase.databaseFileName, databaseBytes);
+          await AppDatabase.instance.open();
+
+          // Reconcile external database location: ensure cross-app restored databases don't get trapped
+          if (AppDatabase.instance.usingExternalLocation()) {
+            if (await AppDatabase.instance.hasExternalLocationPermission()) {
+              try {
+                await AppDatabase.instance.updateExternalDatabase();
+              } catch (e) {
+                _logger.warning(
+                    'Failed to sync restored database to external storage', e);
+              }
+            } else {
+              _logger.info(
+                  'External database location inaccessible after restore, defaulting to local database');
+              await AppDatabase.instance.resetExternalLocation();
+            }
+          }
+
+          // Import images. These will be garbage collected after import
+          final restoredImages =
+              LocalFileStore(join(restoreFolder.path, "Images"));
+          if (await restoredImages.isAvailable()) {
+            // Also show cleanup status here since images may take awhile
+            updateStatus(localizations.cleanUpStatus);
+            await ImageStorage.instance.whileNotSyncing(() async =>
+                restoreImages(restoredImages,
+                    await ImageStorage.instance.internalStore()));
+            if (ImageStorage.instance.usingExternalLocation()) {
+              if (await ImageStorage.instance.hasExternalLocationPermission()) {
+                try {
+                  await ImageStorage.instance.syncImageFolder(true);
+                } catch (e) {
+                  _logger.warning(
+                      'Failed to sync restored images to external storage', e);
+                }
+              } else {
+                _logger.info(
+                    'External image location inaccessible after restore, defaulting to local image folder');
+                await ImageStorage.instance.resetImageFolderLocation();
+              }
+            }
+            ImageStorage.instance.invalidateCache();
+          }
+
+          final restoredSongs =
+              LocalFileStore(join(restoreFolder.path, "SongCovers"));
+          if (await restoredSongs.isAvailable()) {
+            await restoreImages(
+                restoredSongs, await SongStorage.instance.store());
+          }
+        } catch (restoreError) {
+          _logger.severe(
+              'Failed to apply restored database, rolling back', restoreError);
+          if (await File(preRestoreBackupPath).exists()) {
+            try {
+              await AppDatabase.instance.close();
+              await File(preRestoreBackupPath).copy(internalDbPath);
+              await AppDatabase.instance.open();
+              _logger.info('Successfully rolled back to pre-restore database');
+            } catch (rollbackError) {
+              _logger.severe('Rollback to pre-restore database failed',
+                  rollbackError);
+            }
+          }
+          rethrow;
+        } finally {
+          if (await File(preRestoreBackupPath).exists()) {
+            await File(preRestoreBackupPath).delete();
+          }
         }
       } else {
         outcome = const OperationOutcome.failed();
@@ -455,8 +516,9 @@ class BackupRestoreUtils {
   static Future<void> restoreImages(
       FileStore backup, FileStore destination) async {
     for (final imageName in await backup.list()) {
+      final cleanName = basename(imageName);
       final bytes = await backup.read(imageName);
-      if (bytes != null) await destination.write(imageName, bytes);
+      if (bytes != null) await destination.write(cleanName, bytes);
     }
   }
 

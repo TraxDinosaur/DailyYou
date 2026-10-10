@@ -244,6 +244,9 @@ class AppLocalizationsId extends AppLocalizations {
       'Lanjutkan dengan database lokal';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => 'Tidak Dapat Memindahkan Data Anda';
 
   @override

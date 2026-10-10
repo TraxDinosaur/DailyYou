@@ -249,6 +249,9 @@ class AppLocalizationsAr extends AppLocalizations {
       'متابعة مع قاعدة البيانات المحلية';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => 'تعذر نقل بياناتك';
 
   @override

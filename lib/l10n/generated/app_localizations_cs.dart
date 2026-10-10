@@ -238,6 +238,9 @@ class AppLocalizationsCs extends AppLocalizations {
       'Pokračovat s lokální databází';
 
   @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
   String get databaseMigrationErrorTitle => 'Nepodařilo se přesunout vaše data';
 
   @override

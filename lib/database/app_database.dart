@@ -89,7 +89,15 @@ class AppDatabase {
 
     if (usingExternalLocation() && !forceWithoutSync) {
       if (await hasExternalLocationPermission()) {
-        await _syncWithExternalDatabase();
+        try {
+          await _syncWithExternalDatabase();
+        } catch (error, stackTrace) {
+          _logger.warning(
+              'Syncing with external database failed, falling back to local database',
+              error,
+              stackTrace);
+          success = false;
+        }
       } else {
         success = false;
       }
@@ -135,8 +143,13 @@ class AppDatabase {
   }
 
   Future<void> open() async {
-    _database = await openDatabase(_internalPath!,
-        version: 9, onCreate: _createDatabase, onUpgrade: _onUpgrade);
+    _database = await openDatabase(
+      _internalPath!,
+      version: 9,
+      onCreate: _createDatabase,
+      onUpgrade: _onUpgrade,
+      onDowngrade: _onDowngrade,
+    );
 
     await EntriesProvider.instance.load();
     await EntryImagesProvider.instance.load();
@@ -152,6 +165,10 @@ class AppDatabase {
     final db = _database!;
     _database = null;
     db.close();
+  }
+
+  Future<bool> validateDatabase(String path) async {
+    return await _validateSqliteDatabase(path);
   }
 
   Future<bool> _validateSqliteDatabase(String path) async {
@@ -451,9 +468,25 @@ CREATE TABLE $imagesTable (
     }
   }
 
-  Future<void> _createTagTables(Database db) async {
+  Future<bool> _tableExists(DatabaseExecutor db, String tableName) async {
+    final result = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+      [tableName],
+    );
+    return result.isNotEmpty;
+  }
+
+  Future<bool> _columnExists(
+      DatabaseExecutor db, String tableName, String columnName) async {
+    if (!await _tableExists(db, tableName)) return false;
+    final columns = await db.rawQuery('PRAGMA table_info($tableName)');
+    return columns.any((c) =>
+        c['name']?.toString().toLowerCase() == columnName.toLowerCase());
+  }
+
+  Future<void> _createTagTables(DatabaseExecutor db) async {
     await db.execute('''
-CREATE TABLE $tagCategoriesTable (
+CREATE TABLE IF NOT EXISTS $tagCategoriesTable (
     ${TagCategoryFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     ${TagCategoryFields.icon} TEXT,
     ${TagCategoryFields.iconType} INTEGER NOT NULL DEFAULT 0,
@@ -462,11 +495,11 @@ CREATE TABLE $tagCategoriesTable (
     ${TagCategoryFields.sortOrder} INTEGER NOT NULL DEFAULT 0,
     ${TagCategoryFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
     ${TagCategoryFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now'))
-)
+);
 ''');
 
     await db.execute('''
-CREATE TABLE $tagsTable (
+CREATE TABLE IF NOT EXISTS $tagsTable (
     ${TagFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     ${TagFields.categoryId} INTEGER,
     ${TagFields.icon} TEXT,
@@ -478,11 +511,11 @@ CREATE TABLE $tagsTable (
     ${TagFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
     ${TagFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now')),
     FOREIGN KEY (${TagFields.categoryId}) REFERENCES $tagCategoriesTable (id)
-)
+);
 ''');
 
     await db.execute('''
-CREATE TABLE $entryTagsTable (
+CREATE TABLE IF NOT EXISTS $entryTagsTable (
     ${EntryTagFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     ${EntryTagFields.entryId} INTEGER NOT NULL,
     ${EntryTagFields.tagId} INTEGER NOT NULL,
@@ -490,177 +523,26 @@ CREATE TABLE $entryTagsTable (
     ${EntryTagFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
     FOREIGN KEY (${EntryTagFields.entryId}) REFERENCES $entriesTable (id),
     FOREIGN KEY (${EntryTagFields.tagId}) REFERENCES $tagsTable (id)
-)
+);
 ''');
   }
 
-  Future<void> _createTemplateTagTable(Database db) async {
+  Future<void> _createTemplateTagTable(DatabaseExecutor db) async {
     await db.execute('''
-CREATE TABLE $templateTagsTable (
+CREATE TABLE IF NOT EXISTS $templateTagsTable (
     ${TemplateTagFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     ${TemplateTagFields.templateId} INTEGER NOT NULL,
     ${TemplateTagFields.tagId} INTEGER NOT NULL,
     ${TemplateTagFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
     FOREIGN KEY (${TemplateTagFields.templateId}) REFERENCES $templatesTable (id),
     FOREIGN KEY (${TemplateTagFields.tagId}) REFERENCES $tagsTable (id)
-)
-''');
-  }
-
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    _database = db;
-    // In this case, oldVersion is 1, newVersion is 2
-    if (oldVersion == 1) {
-      await db.execute('''
-CREATE TABLE $templatesTable (
-  ${TemplatesFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-  ${TemplatesFields.name} TEXT NOT NULL,
-  ${TemplatesFields.text} TEXT,
-  ${TemplatesFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
-  ${TemplatesFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now'))
-)
-''');
-
-      await TemplatesProvider.instance.createDefaultTemplates();
-    }
-    if (oldVersion <= 2) {
-      await db.execute('''
-CREATE TABLE $imagesTable (
-    ${EntryImageFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    ${EntryImageFields.entryId} INTEGER NOT NULL,
-    ${EntryImageFields.imgPath} TEXT NOT NULL,
-    ${EntryImageFields.imgRank} INTEGER NOT NULL,
-    ${EntryImageFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
-    FOREIGN KEY (${EntryImageFields.entryId}) REFERENCES $entriesTable (id)
-)
-''');
-      await db.transaction((txn) async {
-        await txn.execute('''
--- Step 1: Insert the non-null imgPath entries into the imagesTable
-INSERT INTO $imagesTable (${EntryImageFields.entryId}, ${EntryImageFields.imgPath}, ${EntryImageFields.imgRank}, ${EntryImageFields.timeCreate})
-SELECT ${EntryFields.id}, $deprecatedImgPath, 0, ${EntryFields.timeCreate}
-FROM $entriesTable
-WHERE $deprecatedImgPath IS NOT NULL;
-    ''');
-
-        await txn.execute('''
--- Step 2: Rename the old entries table
-ALTER TABLE $entriesTable RENAME TO old_entries;
-    ''');
-
-        await txn.execute('''
--- Step 3: Create a new entries table without the imgPath field
-CREATE TABLE $entriesTable (
-  ${EntryFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-  ${EntryFields.text} TEXT NOT NULL,
-  ${EntryFields.mood} INTEGER,
-  ${EntryFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
-  ${EntryFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now'))
 );
-    ''');
-
-        await txn.execute('''
--- Step 4: Copy data from the old entries table to the new one
-INSERT INTO $entriesTable (${EntryFields.id}, ${EntryFields.text}, ${EntryFields.mood}, ${EntryFields.timeCreate}, ${EntryFields.timeModified})
-SELECT ${EntryFields.id}, ${EntryFields.text}, ${EntryFields.mood}, ${EntryFields.timeCreate}, ${EntryFields.timeModified}
-FROM old_entries;
-    ''');
-
-        await txn.execute('''
--- Step 5: Drop the old entries table
-DROP TABLE old_entries;
-    ''');
-      });
-    }
-    if (oldVersion <= 3) {
-      await _createTagTables(db);
-      await TagsProvider.instance.createDefaultTags();
-    }
-    if (oldVersion <= 4) {
-      await _createTemplateTagTable(db);
-    }
-    if (oldVersion <= 5) {
-      await _createSongTables(db);
-    }
-    if (oldVersion <= 6) {
-      await _createLocationTable(db);
-    }
-    if (oldVersion <= 7) {
-      await db.execute(
-          'ALTER TABLE $entrySongsTable ADD COLUMN ${EntrySongFields.album} TEXT;');
-    }
-    if (oldVersion <= 8) {
-      await _createSpaceTables(db);
-      await _createPeopleTables(db);
-    }
-  }
-
-  Future<void> _createSpaceTables(Database db) async {
-    await db.execute('''
-CREATE TABLE $spacesTable (
-    ${SpaceFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    ${SpaceFields.name} TEXT NOT NULL UNIQUE,
-    ${SpaceFields.isDefault} INTEGER NOT NULL DEFAULT 0,
-    ${SpaceFields.icon} TEXT,
-    ${SpaceFields.color} INTEGER,
-    ${SpaceFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
-    ${SpaceFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now'))
-)
-''');
-
-    await db.execute('''
-CREATE TABLE $entrySpacesTable (
-    ${EntrySpaceFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    ${EntrySpaceFields.entryId} INTEGER NOT NULL,
-    ${EntrySpaceFields.spaceId} INTEGER NOT NULL,
-    FOREIGN KEY (${EntrySpaceFields.entryId}) REFERENCES $entriesTable (id),
-    FOREIGN KEY (${EntrySpaceFields.spaceId}) REFERENCES $spacesTable (id),
-    UNIQUE (${EntrySpaceFields.entryId}, ${EntrySpaceFields.spaceId})
-)
 ''');
   }
 
-  Future<void> _createPeopleTables(Database db) async {
+  Future<void> _createSongTables(DatabaseExecutor db) async {
     await db.execute('''
-CREATE TABLE $peopleTable (
-    ${PersonFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    ${PersonFields.name} TEXT NOT NULL UNIQUE,
-    ${PersonFields.note} TEXT,
-    ${PersonFields.color} INTEGER,
-    ${PersonFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
-    ${PersonFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now'))
-)
-''');
-
-    await db.execute('''
-CREATE TABLE $entryPeopleTable (
-    ${EntryPersonFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    ${EntryPersonFields.entryId} INTEGER NOT NULL,
-    ${EntryPersonFields.personId} INTEGER NOT NULL,
-    FOREIGN KEY (${EntryPersonFields.entryId}) REFERENCES $entriesTable (id),
-    FOREIGN KEY (${EntryPersonFields.personId}) REFERENCES $peopleTable (id),
-    UNIQUE (${EntryPersonFields.entryId}, ${EntryPersonFields.personId})
-)
-''');
-  }
-
-  Future<void> _createLocationTable(Database db) async {
-    await db.execute('''
-CREATE TABLE $entryLocationsTable (
-    ${EntryLocationFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    ${EntryLocationFields.entryId} INTEGER NOT NULL,
-    ${EntryLocationFields.latitude} REAL,
-    ${EntryLocationFields.longitude} REAL,
-    ${EntryLocationFields.placeName} TEXT,
-    ${EntryLocationFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
-    FOREIGN KEY (${EntryLocationFields.entryId}) REFERENCES $entriesTable (id)
-)
-''');
-  }
-
-  Future<void> _createSongTables(Database db) async {
-    await db.execute('''
-CREATE TABLE $entrySongsTable (
+CREATE TABLE IF NOT EXISTS $entrySongsTable (
     ${EntrySongFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     ${EntrySongFields.entryId} INTEGER NOT NULL,
     ${EntrySongFields.videoId} TEXT NOT NULL,
@@ -674,16 +556,273 @@ CREATE TABLE $entrySongsTable (
     ${EntrySongFields.previewEndMs} INTEGER,
     ${EntrySongFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
     FOREIGN KEY (${EntrySongFields.entryId}) REFERENCES $entriesTable (id)
-)
+);
 ''');
 
     await db.execute('''
-CREATE TABLE $templateSongSlotsTable (
+CREATE TABLE IF NOT EXISTS $templateSongSlotsTable (
     ${TemplateSongSlotFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     ${TemplateSongSlotFields.templateId} INTEGER NOT NULL,
     ${TemplateSongSlotFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
     FOREIGN KEY (${TemplateSongSlotFields.templateId}) REFERENCES $templatesTable (id)
-)
+);
 ''');
   }
+
+  Future<void> _createLocationTable(DatabaseExecutor db) async {
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS $entryLocationsTable (
+    ${EntryLocationFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    ${EntryLocationFields.entryId} INTEGER NOT NULL,
+    ${EntryLocationFields.latitude} REAL,
+    ${EntryLocationFields.longitude} REAL,
+    ${EntryLocationFields.placeName} TEXT,
+    ${EntryLocationFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
+    FOREIGN KEY (${EntryLocationFields.entryId}) REFERENCES $entriesTable (id)
+);
+''');
+  }
+
+  Future<void> _createSpaceTables(DatabaseExecutor db) async {
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS $spacesTable (
+    ${SpaceFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    ${SpaceFields.name} TEXT NOT NULL UNIQUE,
+    ${SpaceFields.isDefault} INTEGER NOT NULL DEFAULT 0,
+    ${SpaceFields.icon} TEXT,
+    ${SpaceFields.color} INTEGER,
+    ${SpaceFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
+    ${SpaceFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now'))
+);
+''');
+
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS $entrySpacesTable (
+    ${EntrySpaceFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    ${EntrySpaceFields.entryId} INTEGER NOT NULL,
+    ${EntrySpaceFields.spaceId} INTEGER NOT NULL,
+    FOREIGN KEY (${EntrySpaceFields.entryId}) REFERENCES $entriesTable (id),
+    FOREIGN KEY (${EntrySpaceFields.spaceId}) REFERENCES $spacesTable (id),
+    UNIQUE (${EntrySpaceFields.entryId}, ${EntrySpaceFields.spaceId})
+);
+''');
+  }
+
+  Future<void> _createPeopleTables(DatabaseExecutor db) async {
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS $peopleTable (
+    ${PersonFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    ${PersonFields.name} TEXT NOT NULL UNIQUE,
+    ${PersonFields.note} TEXT,
+    ${PersonFields.color} INTEGER,
+    ${PersonFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
+    ${PersonFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now'))
+);
+''');
+
+    await db.execute('''
+CREATE TABLE IF NOT EXISTS $entryPeopleTable (
+    ${EntryPersonFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    ${EntryPersonFields.entryId} INTEGER NOT NULL,
+    ${EntryPersonFields.personId} INTEGER NOT NULL,
+    FOREIGN KEY (${EntryPersonFields.entryId}) REFERENCES $entriesTable (id),
+    FOREIGN KEY (${EntryPersonFields.personId}) REFERENCES $peopleTable (id),
+    UNIQUE (${EntryPersonFields.entryId}, ${EntryPersonFields.personId})
+);
+''');
+  }
+
+  Future<void> _ensureSchemaElements(DatabaseExecutor db) async {
+    await _createTagTables(db);
+    await _createTemplateTagTable(db);
+    await _createSongTables(db);
+    await _createLocationTable(db);
+    await _createSpaceTables(db);
+    await _createPeopleTables(db);
+
+    if (await _tableExists(db, entrySongsTable) &&
+        !await _columnExists(db, entrySongsTable, EntrySongFields.album)) {
+      await db.execute(
+          'ALTER TABLE $entrySongsTable ADD COLUMN ${EntrySongFields.album} TEXT;');
+    }
+  }
+
+  Future<void> _sanitizePortedPaths(DatabaseExecutor db) async {
+    try {
+      if (await _tableExists(db, imagesTable)) {
+        final rows = await db.query(imagesTable,
+            columns: [EntryImageFields.id, EntryImageFields.imgPath]);
+        for (final row in rows) {
+          final id = row[EntryImageFields.id] as int?;
+          final rawPath = row[EntryImageFields.imgPath] as String?;
+          if (id != null &&
+              rawPath != null &&
+              (rawPath.contains('/') || rawPath.contains('\\'))) {
+            final cleanName = basename(rawPath);
+            await db.update(
+              imagesTable,
+              {EntryImageFields.imgPath: cleanName},
+              where: '${EntryImageFields.id} = ?',
+              whereArgs: [id],
+            );
+          }
+        }
+      }
+
+      if (await _tableExists(db, entrySongsTable)) {
+        final rows = await db.query(entrySongsTable, columns: [
+          EntrySongFields.id,
+          EntrySongFields.coverPath,
+          EntrySongFields.url,
+        ]);
+        for (final row in rows) {
+          final id = row[EntrySongFields.id] as int?;
+          final coverPath = row[EntrySongFields.coverPath] as String?;
+          final url = row[EntrySongFields.url] as String?;
+          final updates = <String, Object?>{};
+
+          if (coverPath != null &&
+              (coverPath.contains('/') || coverPath.contains('\\'))) {
+            updates[EntrySongFields.coverPath] = basename(coverPath);
+          }
+          if (url != null && url.startsWith('file://') && url.length > 7) {
+            final filePath = url.substring(7);
+            if (filePath.contains('/') || filePath.contains('\\')) {
+              updates[EntrySongFields.url] = 'file://${basename(filePath)}';
+            }
+          }
+
+          if (id != null && updates.isNotEmpty) {
+            await db.update(
+              entrySongsTable,
+              updates,
+              where: '${EntrySongFields.id} = ?',
+              whereArgs: [id],
+            );
+          }
+        }
+      }
+    } catch (e, st) {
+      _logger.warning('Error while sanitizing ported paths', e, st);
+    }
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    _database = db;
+    _logger.info('Upgrading database from v$oldVersion to v$newVersion');
+
+    if (oldVersion < 2) {
+      if (!await _tableExists(db, templatesTable)) {
+        await db.execute('''
+CREATE TABLE IF NOT EXISTS $templatesTable (
+  ${TemplatesFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  ${TemplatesFields.name} TEXT NOT NULL,
+  ${TemplatesFields.text} TEXT,
+  ${TemplatesFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
+  ${TemplatesFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now'))
+);
+''');
+        await TemplatesProvider.instance.createDefaultTemplates();
+      }
+    }
+
+    if (oldVersion < 3) {
+      await db.execute('''
+CREATE TABLE IF NOT EXISTS $imagesTable (
+    ${EntryImageFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    ${EntryImageFields.entryId} INTEGER NOT NULL,
+    ${EntryImageFields.imgPath} TEXT NOT NULL,
+    ${EntryImageFields.imgRank} INTEGER NOT NULL,
+    ${EntryImageFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
+    FOREIGN KEY (${EntryImageFields.entryId}) REFERENCES $entriesTable (id)
+);
+''');
+      if (await _columnExists(db, entriesTable, deprecatedImgPath)) {
+        await db.transaction((txn) async {
+          await txn.execute('''
+INSERT INTO $imagesTable (${EntryImageFields.entryId}, ${EntryImageFields.imgPath}, ${EntryImageFields.imgRank}, ${EntryImageFields.timeCreate})
+SELECT ${EntryFields.id}, $deprecatedImgPath, 0, ${EntryFields.timeCreate}
+FROM $entriesTable
+WHERE $deprecatedImgPath IS NOT NULL;
+''');
+          await txn.execute('ALTER TABLE $entriesTable RENAME TO old_entries;');
+          await txn.execute('''
+CREATE TABLE $entriesTable (
+  ${EntryFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  ${EntryFields.text} TEXT NOT NULL,
+  ${EntryFields.mood} INTEGER,
+  ${EntryFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
+  ${EntryFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now'))
+);
+''');
+          await txn.execute('''
+INSERT INTO $entriesTable (${EntryFields.id}, ${EntryFields.text}, ${EntryFields.mood}, ${EntryFields.timeCreate}, ${EntryFields.timeModified})
+SELECT ${EntryFields.id}, ${EntryFields.text}, ${EntryFields.mood}, ${EntryFields.timeCreate}, ${EntryFields.timeModified}
+FROM old_entries;
+''');
+          await txn.execute('DROP TABLE old_entries;');
+        });
+      }
+    }
+
+    if (oldVersion < 4) {
+      await _createTagTables(db);
+      if (await _tableExists(db, tagsTable)) {
+        final count = Sqflite.firstIntValue(
+                await db.rawQuery('SELECT COUNT(*) FROM $tagsTable')) ??
+            0;
+        if (count == 0) {
+          await TagsProvider.instance.createDefaultTags();
+        }
+      }
+    }
+
+    if (oldVersion < 5) {
+      await _createTemplateTagTable(db);
+    }
+
+    if (oldVersion < 6) {
+      await _createSongTables(db);
+    }
+
+    if (oldVersion < 7) {
+      await _createLocationTable(db);
+    }
+
+    if (oldVersion < 8) {
+      if (await _tableExists(db, entrySongsTable) &&
+          !await _columnExists(db, entrySongsTable, EntrySongFields.album)) {
+        await db.execute(
+            'ALTER TABLE $entrySongsTable ADD COLUMN ${EntrySongFields.album} TEXT;');
+      }
+    }
+
+    if (oldVersion < 9) {
+      await _createSpaceTables(db);
+      await _createPeopleTables(db);
+    }
+
+    await _ensureSchemaElements(db);
+    await _sanitizePortedPaths(db);
+  }
+
+  Future<void> _onDowngrade(Database db, int oldVersion, int newVersion) async {
+    _logger.warning(
+        'Database downgrade requested from v$oldVersion to v$newVersion; preserving data');
+    _database = db;
+    await _ensureSchemaElements(db);
+    await _sanitizePortedPaths(db);
+  }
+
+  @visibleForTesting
+  Future<void> testOnUpgrade(Database db, int oldVersion, int newVersion) =>
+      _onUpgrade(db, oldVersion, newVersion);
+
+  @visibleForTesting
+  Future<void> testOnDowngrade(Database db, int oldVersion, int newVersion) =>
+      _onDowngrade(db, oldVersion, newVersion);
+
+  @visibleForTesting
+  Future<void> testSanitizePortedPaths(DatabaseExecutor db) =>
+      _sanitizePortedPaths(db);
 }
