@@ -31,6 +31,8 @@ No accounts, no ads, no trackers, and no subscription paywalls your journal belo
 
 ## ✨ What's New in this Edition
 
+**Hybrid Edition 1.1.0** synchronizes the current Daily You and June changes: richer media, statistics, fuzzy search, gallery filters and bulk actions, plus settings backup and Day One/StoryPad imports. Existing hybrid journal data and features are preserved. See the [changelog](CHANGELOG.md) and [upstream synchronization report](UPSTREAM_SYNC.md).
+
 Building upon the original Daily You foundation, this release introduces major new features inspired by June while keeping both apps completely distinct:
 
 - 🎵 **Music & Media Links:** Add songs directly from YouTube Music, YouTube, and share links. Features automatic multi-source metadata resolution (title, artist, album, square cover art) with fallback support, cached offline covers, and playable 30-second audio previews right on your entry cards.
