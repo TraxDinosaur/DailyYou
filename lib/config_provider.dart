@@ -1,8 +1,13 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 import 'package:daily_you/language_option.dart';
+import 'package:daily_you/stats/stats_range.dart';
 import 'package:daily_you/storage/secret_store.dart';
 import 'package:daily_you/time_manager.dart';
 import 'package:easy_debounce/easy_debounce.dart';
@@ -25,12 +30,19 @@ class Setting<T> {
 }
 
 class Settings {
-  static const configVersion = Setting<String>("configVersion", "2");
+  static const useExternalImg = Setting<bool>('useExternalImg', false);
+  static const externalImgUri = Setting<String>('externalImgUri', '');
+
+  static const configVersion = Setting<String>("configVersion", "3");
   static const theme = Setting<String>("theme", "system");
-  static const useExternalDb = Setting<bool>("useExternalDb", false);
-  static const externalDbUri = Setting<String>("externalDbUri", "");
-  static const useExternalImg = Setting<bool>("useExternalImg", false);
-  static const externalImgUri = Setting<String>("externalImgUri", "");
+  static const syncLogs = Setting<bool>("syncLogs", false);
+  static const syncImages = Setting<bool>("syncImages", false);
+  static const syncVideo = Setting<bool>("syncVideo", false);
+  static const syncAudio = Setting<bool>("syncAudio", false);
+  static const imageSyncFolderUri = Setting<String>("imageSyncFolderUri", "");
+  static const videoSyncFolderUri = Setting<String>("videoSyncFolderUri", "");
+  static const logSyncFolderUri = Setting<String>("logSyncFolderUri", "");
+  static const audioSyncFolderUri = Setting<String>("audioSyncFolderUri", "");
   static const startingDayOfWeek =
       Setting<String>("startingDayOfWeek", "system");
   static const galleryPageViewMode =
@@ -64,6 +76,12 @@ class Settings {
   static const defaultTemplate = Setting<int>("defaultTemplate", -1);
   static const imageQualityLevel =
       Setting<String>("imageQualityLevel", ImageQuality.medium);
+  static const audioQualityLevel =
+      Setting<String>("audioQualityLevel", AudioQuality.medium);
+  static const videoQualityLevel =
+      Setting<String>("videoQualityLevel", VideoQuality.medium);
+  static const suppressLargeAttachmentWarning =
+      Setting<bool>("suppressLargeAttachmentWarning", false);
   static const overrideLanguage =
       Setting<Map<String, dynamic>?>("overrideLanguage", null);
   static const showFlashbacks = Setting<bool>("showFlashbacks", true);
@@ -97,9 +115,12 @@ class Settings {
   static const moodOverTimeSmoothing =
       Setting<bool>("moodOverTimeSmoothing", true);
   static const statsRange = Setting<String>("statsRange", "allTime");
-  static const statsSubject = Setting<String>("statsSubject", "mood");
+  static const statsPinnedTagIds =
+      Setting<List<dynamic>?>("statsPinnedTagIds", null);
   static const tagPickerSortMode =
       Setting<String>("tagPickerSortMode", "manual");
+  static const timelineSortOrder =
+      Setting<String>("timelineSortOrder", "descending");
   static const requirePassword =
       Setting<bool>("requirePassword", false, secure: true);
   static const biometricUnlock =
@@ -129,28 +150,20 @@ class Settings {
   static const diagnosticLoggingEnabled =
       Setting<bool>("diagnosticLoggingEnabled", false);
   static const screenProtection = Setting<bool>("screenProtection", false);
-  static const keyboardAutocorrect =
-      Setting<bool>("keyboardAutocorrect", true);
+  static const keyboardAutocorrect = Setting<bool>("keyboardAutocorrect", true);
   static const keyboardCapitalization =
       Setting<bool>("keyboardCapitalization", true);
   static const markdownEnabled = Setting<bool>("markdownEnabled", true);
-  static const securityQuestion =
-      Setting<String>("securityQuestion", "");
-  static const securityAnswerHash = Setting<String>(
-      "securityAnswerHash", "",
+  static const securityQuestion = Setting<String>("securityQuestion", "");
+  static const securityAnswerHash = Setting<String>("securityAnswerHash", "",
       secure: true, secretStore: true);
-  static const reminderDays =
-      Setting<String>("reminderDays", "1,2,3,4,5,6,7");
-  static const alwaysOpenNewLog =
-      Setting<bool>("alwaysOpenNewLog", false);
+  static const reminderDays = Setting<String>("reminderDays", "1,2,3,4,5,6,7");
+  static const alwaysOpenNewLog = Setting<bool>("alwaysOpenNewLog", false);
   static const calendarStreaks = Setting<bool>("calendarStreaks", true);
-  static const recentEmojis =
-      Setting<String>("recentEmojis", "☺️,🙂,😐,😕,😔");
-  static const paletteStyle =
-      Setting<String>("paletteStyle", "tonalSpot");
+  static const recentEmojis = Setting<String>("recentEmojis", "☺️,🙂,😐,😕,😔");
+  static const paletteStyle = Setting<String>("paletteStyle", "tonalSpot");
   static const appFont = Setting<String>("appFont", "system");
-  static const mapStyleProvider =
-      Setting<String>("mapStyleProvider", "carto");
+  static const mapStyleProvider = Setting<String>("mapStyleProvider", "carto");
   static const mapTilerKey =
       Setting<String>("mapTilerKey", "", secure: true, secretStore: true);
   static const stadiaKey =
@@ -167,10 +180,14 @@ class Settings {
   static const List<Setting<Object?>> all = [
     configVersion,
     theme,
-    useExternalDb,
-    externalDbUri,
-    useExternalImg,
-    externalImgUri,
+    syncLogs,
+    logSyncFolderUri,
+    syncImages,
+    syncVideo,
+    syncAudio,
+    imageSyncFolderUri,
+    videoSyncFolderUri,
+    audioSyncFolderUri,
     startingDayOfWeek,
     galleryPageViewMode,
     veryHappyIcon,
@@ -195,6 +212,9 @@ class Settings {
     dismissedNotificationOnboarding,
     defaultTemplate,
     imageQualityLevel,
+    audioQualityLevel,
+    videoQualityLevel,
+    suppressLargeAttachmentWarning,
     overrideLanguage,
     showFlashbacks,
     excludeBadDaysFromFlashbacks,
@@ -214,8 +234,9 @@ class Settings {
     moodOverTimeGrouping,
     moodOverTimeSmoothing,
     statsRange,
-    statsSubject,
+    statsPinnedTagIds,
     tagPickerSortMode,
+    timelineSortOrder,
     requirePassword,
     biometricUnlock,
     passwordHash,
@@ -255,16 +276,29 @@ class Settings {
     syncTombstones,
   ];
 
-  static const moodIcons = <int, Setting<String>>{
-    2: veryHappyIcon,
-    1: happyIcon,
-    0: neutralIcon,
-    -1: sadIcon,
-    -2: verySadIcon,
-  };
+  static const legacyMoodIcons = <Setting<String>>[
+    verySadIcon,
+    sadIcon,
+    neutralIcon,
+    happyIcon,
+    veryHappyIcon,
+  ];
 }
 
 class ImageQuality {
+  static const String noCompression = "noCompression";
+  static const String high = "high";
+  static const String medium = "medium";
+  static const String low = "low";
+}
+
+class AudioQuality {
+  static const String high = "high";
+  static const String medium = "medium";
+  static const String low = "low";
+}
+
+class VideoQuality {
   static const String noCompression = "noCompression";
   static const String high = "high";
   static const String medium = "medium";
@@ -301,6 +335,20 @@ class ConfigProvider with ChangeNotifier {
     ImageQuality.low: 1024.0,
   };
 
+  static final audioQualityBitRateMapping = {
+    AudioQuality.low: 32000,
+    AudioQuality.medium: 64000,
+    AudioQuality.high: 128000,
+  };
+
+  static const audioSampleRate = 44100;
+
+  static final audioQualityChannelsMapping = {
+    AudioQuality.low: 1,
+    AudioQuality.medium: 1,
+    AudioQuality.high: 2,
+  };
+
   T get<T>(Setting<T> setting) {
     final value = _config[setting.key];
     return value is T ? value : setting.defaultValue;
@@ -321,6 +369,13 @@ class ConfigProvider with ChangeNotifier {
     }
   }
 
+  StatsRange get statsRange =>
+      StatsRange.values.asNameMap()[get(Settings.statsRange)] ??
+      StatsRange.allTime;
+
+  Future<void> setStatsRange(StatsRange range) =>
+      set(Settings.statsRange, range.name);
+
   Future<void> init() async {
     initializeDateFormatting();
 
@@ -336,6 +391,7 @@ class ConfigProvider with ChangeNotifier {
     await loadSecureConfig();
     await migrateSecretToSecretStore(Settings.passwordHash);
     await loadSecretStoreConfig();
+    await migrateSyncSettings();
     await _pruneUnknownKeys();
   }
 
@@ -364,6 +420,36 @@ class ConfigProvider with ChangeNotifier {
     } catch (error, stackTrace) {
       _logger.severe('Config migration failed', error, stackTrace);
     }
+  }
+
+  Future<void> migrateSyncSettings() async {
+    if (_config[Settings.configVersion.key] ==
+        Settings.configVersion.defaultValue) {
+      return;
+    }
+
+    final logFolder = _legacyFolder('useExternalDb', 'externalDbUri');
+    final imageFolder = _legacyFolder('useExternalImg', 'externalImgUri');
+    if (logFolder != null) {
+      _config[Settings.logSyncFolderUri.key] = logFolder;
+      _config[Settings.syncLogs.key] = true;
+      _config[Settings.syncVideo.key] = true;
+      _config[Settings.syncAudio.key] = true;
+    }
+    if (imageFolder != null) {
+      _config[Settings.syncImages.key] = true;
+      _config[Settings.imageSyncFolderUri.key] = imageFolder;
+    }
+
+    _config[Settings.configVersion.key] = Settings.configVersion.defaultValue;
+    await writeConfig();
+  }
+
+  String? _legacyFolder(String enabledKey, String uriKey) {
+    final uri = _config[uriKey];
+    return _config[enabledKey] == true && uri is String && uri.isNotEmpty
+        ? uri
+        : null;
   }
 
   Future<void> _pruneUnknownKeys() async {
@@ -472,16 +558,15 @@ class ConfigProvider with ChangeNotifier {
   }
 
   Future<void> writeConfig() async {
-    EasyDebounce.debounce("save-config", Duration(seconds: 1), () async {
+    final destination = configFilePath;
+    EasyDebounce.debounce("save-config", Duration(seconds: 1), () {
       final filteredConfig = Map<String, dynamic>.from(_config)
         ..removeWhere((key, _) => _secureKeys.contains(key));
-
-      final tempFile = File('$configFilePath.tmp');
-
-      final jsonString = json.encode(filteredConfig);
-
-      await tempFile.writeAsString(jsonString, flush: true);
-      await tempFile.rename(configFilePath);
+      // This small, debounced preferences write must finish before another
+      // save can reuse the temporary file (Windows cannot rename open files).
+      final tempFile = File('$destination.tmp');
+      tempFile.writeAsStringSync(json.encode(filteredConfig), flush: true);
+      tempFile.renameSync(destination);
     });
   }
 

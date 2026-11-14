@@ -1,17 +1,31 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'dart:io';
-import 'package:daily_you/utils/backup_restore_utils.dart';
+
 import 'package:daily_you/config_provider.dart';
-import 'package:daily_you/database/app_database.dart';
-import 'package:daily_you/database/image_storage.dart';
+import 'package:daily_you/utils/backup_restore_utils.dart';
+import 'package:daily_you/database/attachment_storage.dart';
+import 'package:daily_you/models/attachment.dart';
 import 'package:daily_you/providers/entries_provider.dart';
+import 'package:daily_you/storage/external_sync.dart';
+import 'package:daily_you/storage/external_sync_settings.dart';
 import 'package:daily_you/storage/storage_picker.dart';
+import 'package:daily_you/storage/sync_progress.dart';
+import 'package:daily_you/utils/file_size_format.dart';
+import 'package:daily_you/utils/operation_outcome.dart';
+import 'package:daily_you/widgets/app_dialog.dart';
+import 'package:daily_you/widgets/attachment_type_presentation.dart';
+import 'package:daily_you/widgets/database_overwrite_dialog.dart';
+import 'package:daily_you/widgets/external_sync_dialog.dart';
 import 'package:daily_you/widgets/failure_dialog.dart';
-import 'package:daily_you/widgets/settings_dropdown.dart';
-import 'package:daily_you/widgets/settings_icon_action.dart';
-import 'package:device_info_plus/device_info_plus.dart';
+import 'package:daily_you/widgets/segmented_group.dart';
+import 'package:daily_you/widgets/settings_rows.dart';
+import 'package:daily_you/widgets/sync_progress_dialog.dart';
+import 'package:daily_you/widgets/settings_page_scaffold.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:daily_you/l10n/generated/app_localizations.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 class StorageSettings extends StatefulWidget {
@@ -22,114 +36,71 @@ class StorageSettings extends StatefulWidget {
 }
 
 class _StorageSettingsState extends State<StorageSettings> {
+  late Future<Map<AttachmentType, int>> _usage;
+
   @override
   void initState() {
     super.initState();
+    _usage = _loadUsage();
   }
 
-  Future<bool> requestStoragePermission() async {
-    DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
-    AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
-    if (androidInfo.version.sdkInt < 33) {
-      //Legacy Permission
-      var status = await Permission.storage.status;
-      if (!status.isGranted) {
-        status = await Permission.storage.request();
-      }
-      if (status.isGranted) {
-        return true;
-      }
-      return false;
+  Future<Map<AttachmentType, int>> _loadUsage() async {
+    final sizes = await Future.wait([
+      for (final type in AttachmentType.values)
+        AttachmentStorage.instance.internalSizeBytes(type),
+    ]);
+    return Map.fromIterables(AttachmentType.values, sizes);
+  }
+
+  void _refreshUsage() {
+    if (mounted) setState(() => _usage = _loadUsage());
+  }
+
+  Future<void> _editSync({ExternalSyncSettings? draft}) async {
+    final saved = ExternalSyncSettings.load();
+    final desired = await showAppDialog<ExternalSyncSettings>(
+        context: context,
+        builder: (_) => ExternalSyncDialog(initial: saved, draft: draft));
+    if (desired != null && mounted) await _applySync(saved, desired);
+  }
+
+  Future<void> _toggleSync(bool enabled) async {
+    if (!enabled) {
+      await _applySync(
+          ExternalSyncSettings.load(), const ExternalSyncSettings());
+      return;
     }
 
-    //Modern Permission
-    return true;
-  }
-
-  Future<bool> requestPhotosPermission() async {
-    DeviceInfoPlugin deviceInfoPlugin = DeviceInfoPlugin();
-    AndroidDeviceInfo androidInfo = await deviceInfoPlugin.androidInfo;
-    if (androidInfo.version.sdkInt < 33) {
-      //Legacy Permission
-      var status = await Permission.storage.status;
-      if (!status.isGranted) {
-        status = await Permission.storage.request();
-      }
-      if (status.isGranted) {
-        return true;
-      }
-      return false;
-    } else {
-      //Modern Photos Permission
-      return true;
-    }
-  }
-
-  Future<void> _showChangeLogFolderWarning() async {
-    bool confirmed = false;
-    await showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(AppLocalizations.of(context)!.warningTitle),
-          content:
-              Text(AppLocalizations.of(context)!.logFolderWarningDescription),
-          actions: [
-            TextButton(
-              child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
-              onPressed: () async {
-                Navigator.pop(context);
-              },
-            ),
-            TextButton(
-              child: Text(MaterialLocalizations.of(context).okButtonLabel),
-              onPressed: () async {
-                confirmed = true;
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        );
-      },
-    );
-    if (confirmed) {
-      if (!mounted) return;
-      ValueNotifier<String> statusNotifier = ValueNotifier<String>("");
-
-      BackupRestoreUtils.showLoadingStatus(context, statusNotifier);
-      final outcome =
-          await AppDatabase.instance.selectExternalLocation((status) {
-        statusNotifier.value = status;
-      });
-
-      if (!mounted) return;
-      Navigator.of(context).pop();
-
-      if (outcome.failed) {
-        await showFailureDialog(context,
-            description:
-                AppLocalizations.of(context)!.logFolderErrorDescription,
-            error: outcome.error);
-      }
-    }
-  }
-
-  Future<void> _attemptImageFolderChange() async {
-    ValueNotifier<String> statusNotifier = ValueNotifier<String>("");
-
-    BackupRestoreUtils.showLoadingStatus(context, statusNotifier);
-    final outcome =
-        await ImageStorage.instance.selectExternalLocation((status) {
-      statusNotifier.value = status;
-    });
-
+    final uri = (await StoragePicker.pickDirectoryWithAccess())?.uri;
+    if (uri == null || !mounted) return;
+    if (!await confirmDatabaseOverwrite(context, uri)) return;
     if (!mounted) return;
-    Navigator.of(context).pop();
+    await _editSync(draft: ExternalSyncSettings.withDefaults(uri));
+  }
+
+  Future<void> _applySync(
+      ExternalSyncSettings saved, ExternalSyncSettings desired) async {
+    final sync = ExternalSync(saved, desired);
+    if (!sync.hasWork) {
+      await sync.run((_) {});
+      return;
+    }
+
+    final navigator = Navigator.of(context);
+    final progress = ValueNotifier(SyncProgress(sync.items.first));
+    showSyncProgressDialog(context, progress);
+    final OperationOutcome outcome;
+    try {
+      outcome = await sync.run((value) => progress.value = value);
+    } finally {
+      navigator.pop();
+    }
+    if (!mounted) return;
+    _refreshUsage();
 
     if (outcome.failed) {
       await showFailureDialog(context,
-          description:
-              AppLocalizations.of(context)!.imageFolderErrorDescription,
+          description: AppLocalizations.of(context)!.syncErrorDescription,
           error: outcome.error);
     }
   }
@@ -140,7 +111,7 @@ class _StorageSettingsState extends State<StorageSettings> {
     final TextEditingController controller = TextEditingController();
     final ValueNotifier<bool> isButtonEnabled = ValueNotifier(false);
 
-    showDialog(
+    showAppDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
@@ -208,121 +179,150 @@ class _StorageSettingsState extends State<StorageSettings> {
   }
 
   Future<void> _deleteAllLogs(BuildContext context) async {
-    ValueNotifier<String> statusNotifier = ValueNotifier<String>("");
-
-    BackupRestoreUtils.showLoadingStatus(context, statusNotifier);
-
     try {
-      await EntriesProvider.instance.deleteAll((status) {
-        statusNotifier.value = status;
+      await BackupRestoreUtils.runWithLoadingStatus(context,
+          (updateStatus) async {
+        await EntriesProvider.instance.deleteAll(updateStatus);
+        await AttachmentStorage.instance.garbageCollectAttachments();
       });
-
-      await ImageStorage.instance.garbageCollectImages();
     } finally {
-      if (context.mounted) Navigator.of(context).pop();
+      _refreshUsage();
     }
+  }
+
+  static final List<AttachmentType> _mediaQualityTypes = [
+    for (final type in AttachmentType.values)
+      if (type != AttachmentType.video || Platform.isAndroid) type,
+  ];
+
+  List<Widget> _mediaQualityOptions(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final configProvider = ConfigProvider.instance;
+    return [
+      for (final type in _mediaQualityTypes)
+        SettingsChoiceRow<String>(
+          title: type.label(l10n),
+          value: configProvider.get(type.qualitySetting),
+          options: type.qualityLabels(l10n),
+          onChanged: (value) => configProvider.set(type.qualitySetting, value),
+        ),
+    ];
+  }
+
+  Widget _storageUsageRow(AppLocalizations l10n) {
+    String format(int bytes) => formatFileSize(bytes, l10n.localeName);
+    return FutureBuilder<Map<AttachmentType, int>>(
+      future: _usage,
+      builder: (context, snapshot) {
+        final sizes = snapshot.data;
+        return SettingsInfoRow(
+          icon: Icons.pie_chart_rounded,
+          title: l10n.settingsStorageUsage,
+          subtitle: _UsageChips(entries: [
+            for (final type in AttachmentType.values)
+              (
+                label: type.label(l10n),
+                size: sizes == null ? null : format(sizes[type] ?? 0),
+              ),
+          ]),
+          value: sizes == null
+              ? null
+              : format(sizes.values.fold(0, (total, size) => total + size)),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final configProvider = Provider.of<ConfigProvider>(context);
+    final l10n = AppLocalizations.of(context)!;
+    Provider.of<ConfigProvider>(context);
+    final syncSettings = ExternalSyncSettings.load();
+    final syncedFolder = syncSettings.logFolderUri;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.settingsStorageTitle),
-        centerTitle: true,
-      ),
-      body: ListView(
+    return SettingsPageScaffold(
+      title: l10n.settingsStorageTitle,
+      children: [
+        SegmentedGroup(children: [
+          SettingsToggleRow(
+            icon: Icons.sync_rounded,
+            title: l10n.settingsExternalSyncTitle,
+            subtitle: syncedFolder == null
+                ? null
+                : StoragePicker.displayName(syncedFolder),
+            value: syncSettings.isOn,
+            onChanged: _toggleSync,
+            onOpenOptions: _editSync,
+          ),
+        ]),
+        SegmentedGroup(children: [
+          _storageUsageRow(l10n),
+          SettingsDialogRow(
+            icon: Icons.high_quality_rounded,
+            title: l10n.settingsMediaQualityTitle,
+            options: _mediaQualityOptions,
+          ),
+        ]),
+        SegmentedGroup(children: [
+          SettingsActionRow(
+            icon: Icons.delete_forever_rounded,
+            title: l10n.settingsDeleteAllLogsTitle,
+            destructive: true,
+            onTap: () => _showDeleteAllLogsDialog(context,
+                l10n.settingsDeleteAllLogsTitle, () => _deleteAllLogs(context)),
+          ),
+        ]),
+      ],
+    );
+  }
+}
+
+class _UsageChips extends StatelessWidget {
+  const _UsageChips({required this.entries});
+
+  final List<({String label, String? size})> entries;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
         children: [
-          SettingsDropdown<String>(
-              title: AppLocalizations.of(context)!.settingsImageQuality,
-              value: configProvider.get(Settings.imageQualityLevel),
-              options: [
-                DropdownMenuItem<String>(
-                    value: ImageQuality.noCompression,
-                    child: Text(AppLocalizations.of(context)!
-                        .imageQualityNoCompression)),
-                DropdownMenuItem<String>(
-                    value: ImageQuality.high,
-                    child:
-                        Text(AppLocalizations.of(context)!.imageQualityHigh)),
-                DropdownMenuItem<String>(
-                    value: ImageQuality.medium,
-                    child:
-                        Text(AppLocalizations.of(context)!.imageQualityMedium)),
-                DropdownMenuItem<String>(
-                    value: ImageQuality.low,
-                    child: Text(AppLocalizations.of(context)!.imageQualityLow)),
-              ],
-              onChanged: (String? newValue) {
-                if (newValue != null) {
-                  configProvider.set(Settings.imageQualityLevel, newValue);
-                }
-              }),
-          FutureBuilder(
-              future: AppDatabase.instance.getInternalPath(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data != null) {
-                  var folderText = snapshot.data!;
-                  if (AppDatabase.instance.usingExternalLocation()) {
-                    folderText = StoragePicker.displayName(
-                        configProvider.get(Settings.externalDbUri));
-                  }
-                  return SettingsIconAction(
-                    title: AppLocalizations.of(context)!.settingsLogFolder,
-                    hint: folderText,
-                    icon: Icon(Icons.folder_rounded),
-                    secondaryIcon: Icon(Icons.refresh_rounded),
-                    onPressed: () async {
-                      if (Platform.isAndroid &&
-                          !await requestStoragePermission()) {
-                        return;
-                      }
-                      await _showChangeLogFolderWarning();
-                    },
-                    onSecondaryPressed: () async {
-                      await AppDatabase.instance.resetExternalLocation();
-                    },
-                  );
-                }
-                return const SizedBox();
-              }),
-          FutureBuilder(
-              future: ImageStorage.instance.getInternalFolder(),
-              builder: (context, snapshot) {
-                if (snapshot.hasData && snapshot.data != null) {
-                  var folderText = snapshot.data!;
-                  if (ImageStorage.instance.usingExternalLocation()) {
-                    folderText = StoragePicker.displayName(
-                        configProvider.get(Settings.externalImgUri));
-                  }
-                  return SettingsIconAction(
-                    title: AppLocalizations.of(context)!.settingsImageFolder,
-                    hint: folderText,
-                    icon: Icon(Icons.folder_rounded),
-                    secondaryIcon: Icon(Icons.refresh_rounded),
-                    onPressed: () async {
-                      if (Platform.isAndroid &&
-                          !await requestPhotosPermission()) {
-                        return;
-                      }
-                      await _attemptImageFolderChange();
-                    },
-                    onSecondaryPressed: () async {
-                      await ImageStorage.instance.resetImageFolderLocation();
-                    },
-                  );
-                }
-                return const SizedBox();
-              }),
-          SettingsIconAction(
-              title: AppLocalizations.of(context)!.settingsDeleteAllLogsTitle,
-              icon: Icon(Icons.delete_forever_rounded),
-              onPressed: () => _showDeleteAllLogsDialog(
-                  context,
-                  AppLocalizations.of(context)!.settingsDeleteAllLogsTitle,
-                  () => _deleteAllLogs(context))),
+          for (final (:label, :size) in entries)
+            Chip(
+              label: size == null
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: 6,
+                      children: [Text(label), const _SizePlaceholder()],
+                    )
+                  : Text('$label $size'),
+              labelStyle: theme.textTheme.labelMedium,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              side: BorderSide.none,
+              visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
         ],
+      ),
+    );
+  }
+}
+
+class _SizePlaceholder extends StatelessWidget {
+  const _SizePlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 32,
+      height: 10,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(5),
       ),
     );
   }

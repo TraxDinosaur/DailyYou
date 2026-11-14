@@ -22,6 +22,7 @@ import 'app_localizations_hi.dart';
 import 'app_localizations_id.dart';
 import 'app_localizations_it.dart';
 import 'app_localizations_ja.dart';
+import 'app_localizations_kmr.dart';
 import 'app_localizations_ko.dart';
 import 'app_localizations_lt.dart';
 import 'app_localizations_ms.dart';
@@ -142,6 +143,7 @@ abstract class AppLocalizations {
     Locale('id'),
     Locale('it'),
     Locale('ja'),
+    Locale('kmr'),
     Locale('ko'),
     Locale('lt'),
     Locale('ms'),
@@ -185,6 +187,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Take photo'**
   String get actionTakePhoto;
+
+  /// No description provided for @actionTakeVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Take video'**
+  String get actionTakeVideo;
+
+  /// No description provided for @actionRecordAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Record audio'**
+  String get actionRecordAudio;
+
+  /// No description provided for @actionAddImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Add image'**
+  String get actionAddImage;
+
+  /// No description provided for @actionAddVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Add video'**
+  String get actionAddVideo;
+
+  /// No description provided for @actionAddAudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Add audio'**
+  String get actionAddAudio;
 
   /// No description provided for @actionToday.
   ///
@@ -384,6 +416,12 @@ abstract class AppLocalizations {
   /// **'{tag} Over Time'**
   String chartOverTimeTitle(Object tag);
 
+  /// No description provided for @chartInfluencesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Influences {tag}'**
+  String chartInfluencesTitle(Object tag);
+
   /// No description provided for @chartGroupingLabel.
   ///
   /// In en, this message translates to:
@@ -444,6 +482,102 @@ abstract class AppLocalizations {
   /// **'{count, plural, other{Days Since a Bad Day {count}}}'**
   String streakSinceBadDay(num count);
 
+  /// Label shown under a large streak length, which is not part of this string
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, other{Day Streak}}'**
+  String streakDayLabel(num count);
+
+  /// Label shown under a large number of logs, which is not part of this string
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Log} other{Logs}}'**
+  String statsLogsLabel(num count);
+
+  /// Label shown next to or under a large number of words, which is not part of this string
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Word} other{Words}}'**
+  String statsWordsLabel(num count);
+
+  /// Label shown under a large number of days, which is not part of this string
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Day} other{Days}}'**
+  String statsDaysLabel(num count);
+
+  /// Label shown next to or under a large number giving the longest run of consecutive days, which is not part of this string
+  ///
+  /// In en, this message translates to:
+  /// **'Longest Streak'**
+  String get statsLongestStreakTitle;
+
+  /// Title of the writing statistics tile and page
+  ///
+  /// In en, this message translates to:
+  /// **'Writing'**
+  String get statsWritingTitle;
+
+  /// Label for the average number of words in a log
+  ///
+  /// In en, this message translates to:
+  /// **'Words per Log'**
+  String get statsWordsPerLogTitle;
+
+  /// Title of the tile showing the log with the most words
+  ///
+  /// In en, this message translates to:
+  /// **'Longest Log'**
+  String get statsLongestLogTitle;
+
+  /// Title of the tile showing the weekday or weekdays with the most logs. The count is the number of weekdays tied for most logs
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Most Active Day} other{Most Active Days}}'**
+  String statsMostActiveTitle(int count);
+
+  /// Number of days with a log out of the number of days in the selected time range, e.g. '12 of 30 Days'
+  ///
+  /// In en, this message translates to:
+  /// **'{written} of {total, plural, one{{total} Day} other{{total} Days}}'**
+  String statsDaysOfRange(int written, int total);
+
+  /// Label shown under a large average value
+  ///
+  /// In en, this message translates to:
+  /// **'Average'**
+  String get statsAverageTitle;
+
+  /// Label shown under a large number giving the highest recorded value of a tracker
+  ///
+  /// In en, this message translates to:
+  /// **'Highest'**
+  String get statsHighestTitle;
+
+  /// Label shown under a large number giving the lowest recorded value of a tracker
+  ///
+  /// In en, this message translates to:
+  /// **'Lowest'**
+  String get statsLowestTitle;
+
+  /// No description provided for @statsDaysLoggedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Days Logged'**
+  String get statsDaysLoggedTitle;
+
+  /// Label shown after a percentage, e.g. '45% of Days'. The percentage is not part of this string
+  ///
+  /// In en, this message translates to:
+  /// **'of Days'**
+  String get statsOfDaysLabel;
+
+  /// Label of the button for choosing which tiles appear on the statistics page
+  ///
+  /// In en, this message translates to:
+  /// **'Customize'**
+  String get statsCustomizeTitle;
+
   /// No description provided for @errorExternalStorageAccessTitle.
   ///
   /// In en, this message translates to:
@@ -462,12 +596,6 @@ abstract class AppLocalizations {
   /// **'Continue With Local Database'**
   String get errorExternalStorageAccessContinue;
 
-  /// No description provided for @errorExternalStorageChooseLocation.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose Another Location'**
-  String get errorExternalStorageChooseLocation;
-
   /// No description provided for @databaseMigrationErrorTitle.
   ///
   /// In en, this message translates to:
@@ -485,6 +613,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get databaseMigrationErrorRetry;
+
+  /// No description provided for @databaseNewerErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Required'**
+  String get databaseNewerErrorTitle;
+
+  /// No description provided for @databaseNewerErrorDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data was saved by a newer version of Daily You. This version can\'t open it safely. Update the app to continue.'**
+  String get databaseNewerErrorDescription;
 
   /// No description provided for @errorReport.
   ///
@@ -533,6 +673,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Do you want to delete this photo?'**
   String get deletePhotoDescription;
+
+  /// No description provided for @deleteAttachmentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Attachment'**
+  String get deleteAttachmentTitle;
+
+  /// No description provided for @deleteAttachmentDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Do you want to delete this attachment?'**
+  String get deleteAttachmentDescription;
+
+  /// No description provided for @largeAttachmentWarningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Large attachment'**
+  String get largeAttachmentWarningTitle;
+
+  /// No description provided for @largeAttachmentWarningDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'This attachment is large and will increase your backup size.'**
+  String get largeAttachmentWarningDescription;
+
+  /// No description provided for @dontShowAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t show again'**
+  String get dontShowAgain;
 
   /// No description provided for @pageSettingsTitle.
   ///
@@ -635,6 +805,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter an icon'**
   String get moodIconPrompt;
+
+  /// No description provided for @moodVeryUnpleasant.
+  ///
+  /// In en, this message translates to:
+  /// **'Very Unpleasant'**
+  String get moodVeryUnpleasant;
+
+  /// No description provided for @moodUnpleasant.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpleasant'**
+  String get moodUnpleasant;
+
+  /// No description provided for @moodNeutral.
+  ///
+  /// In en, this message translates to:
+  /// **'Neutral'**
+  String get moodNeutral;
+
+  /// No description provided for @moodPleasant.
+  ///
+  /// In en, this message translates to:
+  /// **'Pleasant'**
+  String get moodPleasant;
+
+  /// No description provided for @moodVeryPleasant.
+  ///
+  /// In en, this message translates to:
+  /// **'Very Pleasant'**
+  String get moodVeryPleasant;
 
   /// No description provided for @settingsFlashbacksViewLayout.
   ///
@@ -1056,6 +1256,108 @@ abstract class AppLocalizations {
   /// **'No Tags'**
   String get noTagsFilterLabel;
 
+  /// Label of the button that resets a single filter
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get clearFilter;
+
+  /// Label of the button that applies the filters and shows the matching logs
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Show {count} log} other{Show {count} logs}}'**
+  String showLogsCount(num count);
+
+  /// Label of the filter button for choosing attachment types
+  ///
+  /// In en, this message translates to:
+  /// **'Attachments'**
+  String get filterPillAttachments;
+
+  /// Label of the filter button for searching logs by keywords
+  ///
+  /// In en, this message translates to:
+  /// **'Keywords'**
+  String get filterPillKeywords;
+
+  /// Filter option for logs that have no mood
+  ///
+  /// In en, this message translates to:
+  /// **'No Mood'**
+  String get noMoodFilterLabel;
+
+  /// Filter option for logs that have no attachments
+  ///
+  /// In en, this message translates to:
+  /// **'No Attachments'**
+  String get noAttachmentsFilterLabel;
+
+  /// Filter option for logs that have no text
+  ///
+  /// In en, this message translates to:
+  /// **'No Text'**
+  String get noTextFilterLabel;
+
+  /// Number of logs that match only some of the active filters
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} partial match} other{{count} partial matches}}'**
+  String partialMatchCount(num count);
+
+  /// Number of tags selected in the tag filter
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} tag} other{{count} tags}}'**
+  String tagCount(num count);
+
+  /// Date filter option covering the most recent months
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Last month} other{Last {count} months}}'**
+  String dateFilterLastMonths(num count);
+
+  /// Date filter option for choosing a custom start and end date
+  ///
+  /// In en, this message translates to:
+  /// **'Custom range'**
+  String get dateFilterCustomRange;
+
+  /// Hint text of the field for adding a keyword to the filter
+  ///
+  /// In en, this message translates to:
+  /// **'Add a keyword…'**
+  String get keywordFilterHint;
+
+  /// Option to only match logs containing every keyword
+  ///
+  /// In en, this message translates to:
+  /// **'All keywords'**
+  String get keywordFilterMatchAll;
+
+  /// Option to match logs containing at least one keyword
+  ///
+  /// In en, this message translates to:
+  /// **'Any keyword'**
+  String get keywordFilterMatchAny;
+
+  /// Option to make keyword matching case sensitive
+  ///
+  /// In en, this message translates to:
+  /// **'Match case'**
+  String get keywordFilterMatchCase;
+
+  /// Number of keywords in the keyword filter
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} keyword} other{{count} keywords}}'**
+  String keywordCount(num count);
+
+  /// Selected date range shown on the date filter
+  ///
+  /// In en, this message translates to:
+  /// **'{start} – {end}'**
+  String dateFilterRange(String start, String end);
+
   /// No description provided for @addTagsTitle.
   ///
   /// In en, this message translates to:
@@ -1091,6 +1393,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Energy'**
   String get tagEnergyName;
+
+  /// No description provided for @tagCategoryPeopleName.
+  ///
+  /// In en, this message translates to:
+  /// **'People'**
+  String get tagCategoryPeopleName;
 
   /// No description provided for @tagCategoryActivitiesName.
   ///
@@ -1179,13 +1487,13 @@ abstract class AppLocalizations {
   /// No description provided for @welcomeLogBodyText.
   ///
   /// In en, this message translates to:
-  /// **'## Welcome to Daily You\n\n> Every day is worth remembering, capture it!\n\n**Daily You** is free, [open source](https://github.com/TraxDinosaur/DailyYou), and community supported. Built around the belief that your diary should be yours, not a product:\n\n- No ads\n- No locked features\n- No tracking or data collection\n\nWhether you\'re journaling, reflecting, or just noting what made you smile, **Daily You** gives you a private space that\'s _truly your own_.'**
+  /// **'## Welcome to Daily You\n\n> Every day is worth remembering, capture it!\n\n**Daily You** is free, [open source](https://github.com/Demizo/Daily_You), and community supported. Built around the belief that your diary should be yours, not a product:\n\n- No ads\n- No locked features\n- No tracking or data collection\n\nWhether you\'re journaling, reflecting, or just noting what made you smile, **Daily You** gives you a private space that\'s _truly your own_.'**
   String get welcomeLogBodyText;
 
   /// No description provided for @settingsStorageTitle.
   ///
   /// In en, this message translates to:
-  /// **'Storage'**
+  /// **'Storage & Sync'**
   String get settingsStorageTitle;
 
   /// No description provided for @settingsImageQuality.
@@ -1193,6 +1501,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Image Quality'**
   String get settingsImageQuality;
+
+  /// No description provided for @settingsMediaQualityTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Media Quality'**
+  String get settingsMediaQualityTitle;
 
   /// No description provided for @imageQualityHigh.
   ///
@@ -1218,6 +1532,12 @@ abstract class AppLocalizations {
   /// **'No Compression'**
   String get imageQualityNoCompression;
 
+  /// No description provided for @settingsStorageUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage Usage'**
+  String get settingsStorageUsage;
+
   /// No description provided for @settingsLogFolder.
   ///
   /// In en, this message translates to:
@@ -1230,6 +1550,18 @@ abstract class AppLocalizations {
   /// **'Image Folder'**
   String get settingsImageFolder;
 
+  /// No description provided for @settingsExternalSyncTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync with External Location'**
+  String get settingsExternalSyncTitle;
+
+  /// No description provided for @chooseFolderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a folder'**
+  String get chooseFolderHint;
+
   /// No description provided for @warningTitle.
   ///
   /// In en, this message translates to:
@@ -1239,7 +1571,7 @@ abstract class AppLocalizations {
   /// No description provided for @logFolderWarningDescription.
   ///
   /// In en, this message translates to:
-  /// **'If the selected folder already contains a \'daily_you.db\' file, it will be used to overwrite your existing logs!'**
+  /// **'The selected folder already contains a \'daily_you.db\' file, it will be used to overwrite your existing logs!'**
   String get logFolderWarningDescription;
 
   /// No description provided for @errorTitle.
@@ -1259,6 +1591,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to change image folder!'**
   String get imageFolderErrorDescription;
+
+  /// No description provided for @syncErrorDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to sync with the external location!'**
+  String get syncErrorDescription;
 
   /// No description provided for @backupErrorDescription.
   ///
@@ -1464,6 +1802,12 @@ abstract class AppLocalizations {
   /// **'Export Images'**
   String get exportImages;
 
+  /// No description provided for @exportIncludeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Include'**
+  String get exportIncludeTitle;
+
   /// No description provided for @settingsImport.
   ///
   /// In en, this message translates to:
@@ -1565,6 +1909,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Markdown'**
   String get formatMarkdown;
+
+  /// No description provided for @formatCsv.
+  ///
+  /// In en, this message translates to:
+  /// **'CSV'**
+  String get formatCsv;
+
+  /// No description provided for @formatJson.
+  ///
+  /// In en, this message translates to:
+  /// **'JSON'**
+  String get formatJson;
 
   /// No description provided for @settingsDeleteAllLogsTitle.
   ///
@@ -1734,6 +2090,18 @@ abstract class AppLocalizations {
   /// **'Images'**
   String get imagesTitle;
 
+  /// No description provided for @audioTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get audioTitle;
+
+  /// No description provided for @videoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get videoTitle;
+
   /// No description provided for @tagMoodTitle.
   ///
   /// In en, this message translates to:
@@ -1781,6 +2149,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Choose a log'**
   String get shareAddToLogPickerTitle;
+
+  /// No description provided for @attachmentAddErrorDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to add attachment!'**
+  String get attachmentAddErrorDescription;
+
+  /// No description provided for @attachmentLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open this attachment'**
+  String get attachmentLoadFailed;
+
+  /// No description provided for @attachmentNoAppToOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'No app can open this attachment'**
+  String get attachmentNoAppToOpen;
+
+  /// No description provided for @recorderDiscardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard recording?'**
+  String get recorderDiscardTitle;
+
+  /// No description provided for @recorderDiscardDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'This recording will be deleted.'**
+  String get recorderDiscardDescription;
+
+  /// No description provided for @recorderDiscardAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get recorderDiscardAction;
+
+  /// No description provided for @recorderPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone permission is required to record audio'**
+  String get recorderPermissionDenied;
+
+  /// No description provided for @recorderErrorDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to record audio!'**
+  String get recorderErrorDescription;
+
+  /// Label of the action that selects every log in the gallery
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get gallerySelectAll;
+
+  /// Label of the action that starts selecting logs in the gallery
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get gallerySelectAction;
+
+  /// Label of the action that opens a log from the gallery
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get galleryOpenAction;
+
+  /// Confirmation message shown before deleting the selected logs
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Delete {count} log? Its attachments are removed with it.} other{Delete {count} logs? Their attachments are removed with them.}}'**
+  String deleteLogsMessage(num count);
+
+  /// Label of the action that creates a new log
+  ///
+  /// In en, this message translates to:
+  /// **'New Log'**
+  String get newLogAction;
+
+  /// Title of the dialog for removing tags from the selected logs
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Tags'**
+  String get removeTagsTitle;
+
+  /// Label of the button that applies the chosen changes
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get applyButtonLabel;
+
+  /// Confirmation message shown before adding tags to the selected logs
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Add the chosen tags to {count} log?} other{Add the chosen tags to {count} logs?}}'**
+  String addTagsConfirmMessage(num count);
+
+  /// Confirmation message shown before removing tags from the selected logs
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Remove the chosen tags from {count} log?} other{Remove the chosen tags from {count} logs?}}'**
+  String removeTagsConfirmMessage(num count);
+
+  /// Question asking whether logs that only partially match the search text should also be selected
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Also select {count} partial match?} other{Also select {count} partial matches?}}'**
+  String selectPartialMatchesMessage(num count);
+
+  /// Button choosing to select only logs that match the exact text
+  ///
+  /// In en, this message translates to:
+  /// **'Exact only'**
+  String get selectExactMatchesOnly;
+
+  /// Button choosing to also select logs that partially match the text
+  ///
+  /// In en, this message translates to:
+  /// **'Include'**
+  String get selectIncludingPartialMatches;
+
+  /// No description provided for @errorExternalStorageChooseLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Another Location'**
+  String get errorExternalStorageChooseLocation;
 
   /// No description provided for @settingsAllowNetworkTitle.
   ///
@@ -1979,6 +2473,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Font style'**
   String get settingsAppFont;
+
+  /// No description provided for @settingsExportPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Export app settings'**
+  String get settingsExportPreferences;
+
+  /// No description provided for @settingsRestorePreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore app settings'**
+  String get settingsRestorePreferences;
+
+  /// No description provided for @settingsRestorePreferencesConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore appearance and editor preferences? Your journal and security settings stay unchanged.'**
+  String get settingsRestorePreferencesConfirm;
+
+  /// No description provided for @chooseMoodEmoji.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose emoji'**
+  String get chooseMoodEmoji;
 }
 
 class _AppLocalizationsDelegate
@@ -2009,6 +2527,7 @@ class _AppLocalizationsDelegate
         'id',
         'it',
         'ja',
+        'kmr',
         'ko',
         'lt',
         'ms',
@@ -2092,6 +2611,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsIt();
     case 'ja':
       return AppLocalizationsJa();
+    case 'kmr':
+      return AppLocalizationsKmr();
     case 'ko':
       return AppLocalizationsKo();
     case 'lt':

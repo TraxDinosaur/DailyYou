@@ -1,3 +1,4 @@
+import 'package:daily_you/models/attachment.dart';
 // Behavior based on DenserMeerkat/June (GPL-3.0)
 import 'dart:io';
 
@@ -91,7 +92,7 @@ VALUES (1, 101, '/data/user/0/com.demizo.daily_you/app_flutter/Images/original_p
           options: OpenDatabaseOptions(
             version: 9,
             onUpgrade: AppDatabase.instance.testOnUpgrade,
-            onDowngrade: AppDatabase.instance.testOnDowngrade,
+
           ),
         );
 
@@ -108,9 +109,9 @@ VALUES (1, 101, '/data/user/0/com.demizo.daily_you/app_flutter/Images/original_p
         expect(templates.first['name'], 'Daily Reflection');
 
         // Path should be sanitized to basename
-        final images = await upgradedDb.query(imagesTable);
+        final images = await upgradedDb.query(attachmentsTable);
         expect(images.length, 1);
-        expect(images.first[EntryImageFields.imgPath], 'original_pic.jpg');
+        expect(images.first[EntryAttachmentFields.filePath], 'original_pic.jpg');
 
         // 4. Verify all hybrid tables exist and are usable
         // entry_songs with album column
@@ -175,7 +176,7 @@ VALUES (1, 101, '/data/user/0/com.demizo.daily_you/app_flutter/Images/original_p
       }
     });
 
-    test('preserves user data on downgrade without dropping tables', () async {
+    test('rejects a future schema without dropping user data', () async {
       final dbFactory = databaseFactoryFfi;
       final tempDir = await Directory.systemTemp.createTemp('downgrade_');
       final dbPath = join(tempDir.path, 'downgrade.db');
@@ -206,14 +207,11 @@ VALUES (1, 'Important entry that must survive downgrade', 1, '$now', '$now')
 ''');
         await db.close();
 
-        // Downgrade to version 9 using testOnDowngrade
-        final downgradedDb = await dbFactory.openDatabase(
-          dbPath,
-          options: OpenDatabaseOptions(
-            version: 9,
-            onDowngrade: AppDatabase.instance.testOnDowngrade,
-          ),
-        );
+        await expectLater(dbFactory.openDatabase(dbPath, options: OpenDatabaseOptions(
+          version: 9,
+          onDowngrade: (db, oldVersion, newVersion) => throw DatabaseNewerThanAppException(oldVersion),
+        )), throwsA(isA<DatabaseNewerThanAppException>()));
+        final downgradedDb = await dbFactory.openDatabase(dbPath);
 
         final entries = await downgradedDb.query(entriesTable);
         expect(entries.length, 1);
@@ -233,8 +231,8 @@ VALUES (1, 'Important entry that must survive downgrade', 1, '$now', '$now')
   group('External Storage Failure Recovery', () {
     test('resetExternalLocation and resetImageFolderLocation cleanly fall back to local storage', () async {
       final config = ConfigProvider.instance;
-      await config.set(Settings.useExternalDb, true);
-      await config.set(Settings.externalDbUri, 'content://invalid.uri/from/old/app');
+      await config.set(Settings.syncLogs, true);
+      await config.set(Settings.logSyncFolderUri, 'content://invalid.uri/from/old/app');
       await config.set(Settings.useExternalImg, true);
       await config.set(Settings.externalImgUri, 'content://invalid.uri/from/old/app/images');
 
@@ -242,7 +240,8 @@ VALUES (1, 'Important entry that must survive downgrade', 1, '$now', '$now')
       expect(ImageStorage.instance.usingExternalLocation(), isTrue);
 
       // Simulates user clicking "Continue With Local Database"
-      await AppDatabase.instance.resetExternalLocation();
+      await config.set(Settings.syncLogs, false);
+      await config.set(Settings.logSyncFolderUri, '');
       await ImageStorage.instance.resetImageFolderLocation();
 
       expect(AppDatabase.instance.usingExternalLocation(), isFalse);

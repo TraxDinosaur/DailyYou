@@ -5,7 +5,7 @@ import 'package:daily_you/models/space.dart';
 import 'package:daily_you/pages/edit_entry_page.dart';
 import 'package:daily_you/pages/entries_list_page.dart';
 import 'package:daily_you/providers/entries_provider.dart';
-import 'package:daily_you/providers/entry_images_provider.dart';
+import 'package:daily_you/providers/entry_attachments_provider.dart';
 import 'package:daily_you/providers/people_provider.dart';
 import 'package:daily_you/providers/spaces_provider.dart';
 import 'package:daily_you/time_manager.dart';
@@ -278,7 +278,7 @@ class _SpacesAndPeoplePageState extends State<SpacesAndPeoplePage>
         builder: (context) => AddEditEntryPage(
           entry: null,
           openCamera: false,
-          images: const [],
+          attachments: const [],
           initialSpaceId: _selectedSpaceId,
         ),
       ));
@@ -288,7 +288,7 @@ class _SpacesAndPeoplePageState extends State<SpacesAndPeoplePage>
         builder: (context) => AddEditEntryPage(
           entry: null,
           openCamera: false,
-          images: const [],
+          attachments: const [],
           initialPersonIds: _selectedPersonId != null ? [_selectedPersonId!] : const [],
         ),
       ));
@@ -301,7 +301,7 @@ class _SpacesAndPeoplePageState extends State<SpacesAndPeoplePage>
     final spacesProvider = Provider.of<SpacesProvider>(context);
     final peopleProvider = Provider.of<PeopleProvider>(context);
     final entriesProvider = Provider.of<EntriesProvider>(context);
-    final imagesProvider = Provider.of<EntryImagesProvider>(context);
+    final imagesProvider = Provider.of<EntryAttachmentsProvider>(context);
 
     final allEntries = entriesProvider.entries;
     final spaces = spacesProvider.spaces;
@@ -486,7 +486,7 @@ class _SpacesAndPeoplePageState extends State<SpacesAndPeoplePage>
   Widget _buildEntriesList(
     List<Entry> entries,
     EntriesProvider entriesProvider,
-    EntryImagesProvider imagesProvider,
+    EntryAttachmentsProvider imagesProvider,
   ) {
     return ListView.builder(
       padding: const EdgeInsets.only(left: 12, right: 12, top: 8, bottom: 80),
@@ -513,7 +513,7 @@ class _SpacesAndPeoplePageState extends State<SpacesAndPeoplePage>
               child: LargeEntryCardWidget(
                 title: dateStr,
                 entry: entry,
-                images: images,
+                attachments: images,
               ),
             ),
           ),

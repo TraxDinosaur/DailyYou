@@ -1,4 +1,9 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'package:daily_you/l10n/generated/app_localizations.dart';
+import 'package:daily_you/storage/storage_picker.dart';
 import 'package:daily_you/utils/imports/import_daybook.dart' as daybook;
 import 'package:daily_you/utils/imports/import_daylio.dart' as daylio;
 import 'package:daily_you/utils/imports/import_diarium.dart' as diarium;
@@ -9,70 +14,119 @@ import 'package:daily_you/utils/imports/import_markdown.dart' as markdown;
 import 'package:daily_you/utils/imports/import_mybrain.dart' as mybrain;
 import 'package:daily_you/utils/imports/import_oneshot.dart' as oneshot;
 import 'package:daily_you/utils/imports/import_pixels.dart' as pixels;
+import 'package:daily_you/utils/imports/import_portable.dart';
+import 'package:daily_you/utils/imports/import_runner.dart';
+import 'package:daily_you/utils/imports/import_source.dart';
 import 'package:daily_you/utils/operation_outcome.dart';
 import 'package:flutter/widgets.dart';
 
 export 'package:daily_you/utils/imports/import_format.dart';
 
-typedef ImportRunner = Future<OperationOutcome> Function(
-    BuildContext context, Function(String) updateStatus);
+const _jsonExtensions = ['json'];
+const _jsonMimeTypes = ['application/json'];
+const _jsonAndZipExtensions = ['json', 'zip'];
+const _jsonAndZipMimeTypes = ['application/json', 'application/zip'];
 
 class ImportFormatOption {
-  const ImportFormatOption(this.format, this.name, this.run);
+  const ImportFormatOption(
+    this.format,
+    this.name,
+    this.parse, {
+    this.kind = ImportSourceKind.file,
+    this.pickerExtensions,
+    this.pickerMimeTypes,
+  });
 
   final ImportFormat format;
   final String Function(AppLocalizations localizations) name;
-  final ImportRunner run;
+  final ImportParser parse;
+  final ImportSourceKind kind;
+  final List<String>? pickerExtensions;
+  final List<String>? pickerMimeTypes;
+
+  Future<OperationOutcome> run(
+    BuildContext context,
+    void Function(String) updateStatus, {
+    ImportFilePicker pickFile = StoragePicker.pickFile,
+  }) =>
+      runImport(context, updateStatus,
+          kind: kind,
+          parse: parse,
+          pickerExtensions: pickerExtensions,
+          pickerMimeTypes: pickerMimeTypes,
+          pickFile: pickFile);
 }
 
 class ImportRegistry {
   const ImportRegistry(this.options);
 
   static final ImportRegistry instance = ImportRegistry([
+    ImportFormatOption(ImportFormat.dayOne, (_) => 'Day One',
+        (source, _) => parsePortable(source, PortableFormat.dayOne),
+        pickerExtensions: _jsonAndZipExtensions,
+        pickerMimeTypes: _jsonAndZipMimeTypes),
+    ImportFormatOption(ImportFormat.storyPad, (_) => 'StoryPad',
+        (source, _) => parsePortable(source, PortableFormat.storyPad),
+        pickerExtensions: _jsonAndZipExtensions,
+        pickerMimeTypes: _jsonAndZipMimeTypes),
     ImportFormatOption(
       ImportFormat.dailyYouJson,
       (localizations) => localizations.formatDailyYouJson,
-      (context, updateStatus) => json.importFromJson(updateStatus),
+      (source, _) => json.parseJson(source),
+      pickerExtensions: _jsonAndZipExtensions,
+      pickerMimeTypes: _jsonAndZipMimeTypes,
     ),
     ImportFormatOption(
       ImportFormat.daybook,
       (localizations) => localizations.formatDaybook,
-      daybook.importFromDaybook,
+      (source, _) => daybook.parseDaybook(source),
+      kind: ImportSourceKind.archive,
     ),
     ImportFormatOption(
       ImportFormat.daylio,
       (localizations) => localizations.formatDaylio,
-      daylio.importFromDaylio,
+      (source, _) => daylio.parseDaylio(source),
+      kind: ImportSourceKind.archive,
     ),
     ImportFormatOption(
       ImportFormat.diarium,
       (localizations) => localizations.formatDiarium,
-      diarium.importFromDiarium,
+      (source, localizations) => diarium.parseDiarium(source,
+          peopleCategoryName: localizations.tagCategoryPeopleName),
     ),
     ImportFormatOption(
       ImportFormat.diaro,
       (localizations) => localizations.formatDiaro,
-      diaro.importFromDiaro,
+      (source, _) => diaro.parseDiaro(source),
+      kind: ImportSourceKind.archive,
     ),
     ImportFormatOption(
       ImportFormat.myBrain,
       (localizations) => localizations.formatMyBrain,
-      (context, updateStatus) => mybrain.importFromMyBrain(updateStatus),
+      (source, _) => mybrain.parseMyBrain(source),
+      pickerExtensions: _jsonExtensions,
+      pickerMimeTypes: _jsonMimeTypes,
     ),
     ImportFormatOption(
       ImportFormat.oneShot,
       (localizations) => localizations.formatOneShot,
-      (context, updateStatus) => oneshot.importFromOneShot(updateStatus),
+      (source, _) => oneshot.parseOneShot(source),
+      pickerExtensions: _jsonExtensions,
+      pickerMimeTypes: _jsonMimeTypes,
     ),
     ImportFormatOption(
       ImportFormat.pixels,
       (localizations) => localizations.formatPixels,
-      (context, updateStatus) => pixels.importFromPixels(updateStatus),
+      (source, _) => pixels.parsePixels(source),
+      pickerExtensions: _jsonExtensions,
+      pickerMimeTypes: _jsonMimeTypes,
     ),
     ImportFormatOption(
       ImportFormat.markdown,
       (localizations) => 'Markdown (.md)',
-      (context, updateStatus) => markdown.importFromMarkdown(updateStatus),
+      (source, _) => markdown.parseMarkdown(source),
+      pickerExtensions: const ['md', 'markdown', 'txt'],
+      pickerMimeTypes: const ['text/markdown', 'text/plain'],
     ),
   ]);
 

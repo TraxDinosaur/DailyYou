@@ -6,9 +6,10 @@ import 'package:daily_you/models/person.dart';
 import 'package:daily_you/models/space.dart';
 import 'package:daily_you/pages/spaces_and_people_page.dart';
 import 'package:daily_you/providers/entries_provider.dart';
-import 'package:daily_you/providers/entry_images_provider.dart';
+import 'package:daily_you/providers/entry_attachments_provider.dart';
 import 'package:daily_you/providers/entry_locations_provider.dart';
 import 'package:daily_you/providers/people_provider.dart';
+import 'package:daily_you/providers/mood_scale_provider.dart';
 import 'package:daily_you/providers/spaces_provider.dart';
 import 'package:daily_you/providers/tags_provider.dart';
 import 'package:daily_you/widgets/large_entry_card_widget.dart';
@@ -71,10 +72,11 @@ void main() {
       MultiProvider(
         providers: [
           ChangeNotifierProvider.value(value: SpacesProvider.instance),
+          ChangeNotifierProvider.value(value: MoodScaleProvider.instance),
           ChangeNotifierProvider.value(value: PeopleProvider.instance),
           ChangeNotifierProvider.value(value: TagsProvider.instance),
           ChangeNotifierProvider.value(value: EntriesProvider.instance),
-          ChangeNotifierProvider.value(value: EntryImagesProvider.instance),
+          ChangeNotifierProvider.value(value: EntryAttachmentsProvider.instance),
           ChangeNotifierProvider.value(value: EntryLocationsProvider.instance),
         ],
         child: const MaterialApp(

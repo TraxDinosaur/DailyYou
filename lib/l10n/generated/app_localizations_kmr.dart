@@ -1,0 +1,1462 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for Northern Kurdish (`kmr`).
+class AppLocalizationsKmr extends AppLocalizations {
+  AppLocalizationsKmr([String locale = 'kmr']) : super(locale);
+
+  @override
+  String get appTitle => 'Daily You';
+
+  @override
+  String get dailyReminderTitle => 'ئەڤرۆ تۆمار بکە!';
+
+  @override
+  String get dailyReminderDescription => 'تۆمارا خۆ یا ئەڤرۆ بکێشە…';
+
+  @override
+  String get actionTakePhoto => 'وێنەی بگرە';
+
+  @override
+  String get actionTakeVideo => 'ڤیدیۆیێ بگرە';
+
+  @override
+  String get actionRecordAudio => 'دەنگی تۆمار بکە';
+
+  @override
+  String get actionAddImage => 'وێنەی زێدەبکە';
+
+  @override
+  String get actionAddVideo => 'ڤیدیۆیێ زێدە بکە';
+
+  @override
+  String get actionAddAudio => 'دەنگی زێدەبکە';
+
+  @override
+  String get actionToday => 'ئەڤرۆ';
+
+  @override
+  String get actionOtherDay => 'ڕۆژا دی';
+
+  @override
+  String get pageHomeTitle => 'سەرەکی';
+
+  @override
+  String get jumpToMonthTitle => 'چوون بۆ مانگ';
+
+  @override
+  String get jumpToLogTitle => 'چوون بۆ تۆمار';
+
+  @override
+  String get flashbacksTitle => 'بیرھاتنان';
+
+  @override
+  String get settingsFlashbacksExcludeBadDays => 'ڕۆژێن نەباش لابدە';
+
+  @override
+  String get flaskbacksEmpty => 'هێشتا چ بیرهاتنێن کەڤن نەهاتینە…';
+
+  @override
+  String get flashbackGoodDay => 'ڕۆژەکا باش';
+
+  @override
+  String get flashbackRandomDay => 'ڕۆژەکا ھەرەمەکی';
+
+  @override
+  String flashbackWeek(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Weeks Ago',
+      one: '$count Week Ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String flashbackMonth(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Months Ago',
+      one: '$count Month Ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String flashbackYear(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Years Ago',
+      one: '$count Year Ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get flashbackOnThisDay => 'ل ل ڤێ ڕۆژێ';
+
+  @override
+  String get pageGalleryTitle => 'پێشانگە';
+
+  @override
+  String get searchLogsHint => 'تۆماران بگەڕە…';
+
+  @override
+  String logCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count logs',
+      one: '$count log',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dayCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '$count day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String wordCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count words',
+      one: '$count word',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noLogs => 'چ تۆمار نینن…';
+
+  @override
+  String get noResults => 'چ ئەنجام نینن…';
+
+  @override
+  String get sortDateTitle => 'بەروارد';
+
+  @override
+  String get sortOrderAscendingTitle => 'بەرەف سەری';
+
+  @override
+  String get sortOrderDescendingTitle => 'بەرەف خوارێ';
+
+  @override
+  String get pageStatisticsTitle => 'ئامار';
+
+  @override
+  String get statisticsNotEnoughData => 'پێزانینێن پێدڤی نینن…';
+
+  @override
+  String get statisticsRangeOneMonth => '١ مانگ';
+
+  @override
+  String get statisticsRangeSixMonths => '٦ مانگ';
+
+  @override
+  String get statisticsRangeOneYear => '١ ساڵ';
+
+  @override
+  String get statisticsRangeAllTime => 'ھەمی دەم';
+
+  @override
+  String chartSummaryTitle(Object tag) {
+    return 'پوختە';
+  }
+
+  @override
+  String chartByDayTitle(Object tag) {
+    return 'ب ڕۆژێ';
+  }
+
+  @override
+  String chartOverTimeTitle(Object tag) {
+    return 'ب بورینا دەمی';
+  }
+
+  @override
+  String chartInfluencesTitle(Object tag) {
+    return 'Influences $tag';
+  }
+
+  @override
+  String get chartGroupingLabel => 'کۆمکرن ل دویف';
+
+  @override
+  String get chartGroupingDay => 'ڕۆژ';
+
+  @override
+  String get chartGroupingWeek => 'حەفتی';
+
+  @override
+  String get chartGroupingMonth => 'مانگ';
+
+  @override
+  String get chartGroupingYear => 'ساڵ';
+
+  @override
+  String get chartSmoothingLabel => 'ڕێککرن';
+
+  @override
+  String streakCurrent(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'بەردەوامییا نوکە $count',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String streakLongest(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'درێژترین ماوەی بەردەوامی $count',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String streakGreatDays(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'رۆژێن خۆش $count',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String streakSinceBadDay(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'ڕۆژێن پشتی ڕۆژەکا خراب$count',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String streakDayLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Day Streak',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsLogsLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Logs',
+      one: 'Log',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsWordsLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Words',
+      one: 'Word',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsDaysLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Days',
+      one: 'Day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statsLongestStreakTitle => 'Longest Streak';
+
+  @override
+  String get statsWritingTitle => 'Writing';
+
+  @override
+  String get statsWordsPerLogTitle => 'Words per Log';
+
+  @override
+  String get statsLongestLogTitle => 'Longest Log';
+
+  @override
+  String statsMostActiveTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Most Active Days',
+      one: 'Most Active Day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsDaysOfRange(int written, int total) {
+    final intl.NumberFormat writtenNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String writtenString = writtenNumberFormat.format(written);
+    final intl.NumberFormat totalNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String totalString = totalNumberFormat.format(total);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$totalString Days',
+      one: '$totalString Day',
+    );
+    return '$writtenString of $_temp0';
+  }
+
+  @override
+  String get statsAverageTitle => 'Average';
+
+  @override
+  String get statsHighestTitle => 'Highest';
+
+  @override
+  String get statsLowestTitle => 'Lowest';
+
+  @override
+  String get statsDaysLoggedTitle => 'Days Logged';
+
+  @override
+  String get statsOfDaysLabel => 'of Days';
+
+  @override
+  String get statsCustomizeTitle => 'Customize';
+
+  @override
+  String get errorExternalStorageAccessTitle =>
+      'Can\'t Access External Storage';
+
+  @override
+  String get errorExternalStorageAccessDescription =>
+      'If you are using network storage make sure the service is online and you have network access.\n\nOtherwise, the app may have lost permissions for the external folder. Go to settings, and reselect the external folder to grant access.\n\nWarning, changes will not be synced until you restore access to the external storage location!';
+
+  @override
+  String get errorExternalStorageAccessContinue =>
+      'Continue With Local Database';
+
+  @override
+  String get databaseMigrationErrorTitle => 'Couldn\'t Move Your Data';
+
+  @override
+  String get databaseMigrationErrorDescription =>
+      'Your entries are safe but couldn\'t be moved to the app\'s storage.\n\nTry again, and report the issue if it keeps happening.';
+
+  @override
+  String get databaseMigrationErrorRetry => 'Retry';
+
+  @override
+  String get databaseNewerErrorTitle => 'Update Required';
+
+  @override
+  String get databaseNewerErrorDescription =>
+      'Your data was saved by a newer version of Daily You. This version can\'t open it safely. Update the app to continue.';
+
+  @override
+  String get errorReport => 'Report Issue';
+
+  @override
+  String get lastModified => 'Modified';
+
+  @override
+  String get writeSomethingHint => 'Write something…';
+
+  @override
+  String get titleHint => 'Title…';
+
+  @override
+  String get deleteLogTitle => 'Delete Log';
+
+  @override
+  String get deleteLogDescription => 'Do you want to delete this log?';
+
+  @override
+  String get deletePhotoTitle => 'Delete Photo';
+
+  @override
+  String get deletePhotoDescription => 'Do you want to delete this photo?';
+
+  @override
+  String get deleteAttachmentTitle => 'Delete Attachment';
+
+  @override
+  String get deleteAttachmentDescription =>
+      'Do you want to delete this attachment?';
+
+  @override
+  String get largeAttachmentWarningTitle => 'Large attachment';
+
+  @override
+  String get largeAttachmentWarningDescription =>
+      'This attachment is large and will increase your backup size.';
+
+  @override
+  String get dontShowAgain => 'Don\'t show again';
+
+  @override
+  String get pageSettingsTitle => 'Settings';
+
+  @override
+  String get settingsAppearanceTitle => 'Appearance';
+
+  @override
+  String get settingsTheme => 'Theme';
+
+  @override
+  String get themeSystem => 'System';
+
+  @override
+  String get themeLight => 'Light';
+
+  @override
+  String get themeDark => 'Dark';
+
+  @override
+  String get themeAmoled => 'AMOLED';
+
+  @override
+  String get settingsFirstDayOfWeek => 'First Day Of Week';
+
+  @override
+  String get settingsCalendarSystem => 'Calendar System';
+
+  @override
+  String get calendarSystemGregorian => 'Gregorian';
+
+  @override
+  String get calendarSystemJalali => 'Jalali';
+
+  @override
+  String get settingsUseSystemAccentColor => 'Use System Accent Color';
+
+  @override
+  String get settingsCustomAccentColor => 'Custom Accent Color';
+
+  @override
+  String get settingsShowMarkdownToolbar => 'Show Markdown Toolbar';
+
+  @override
+  String get settingsShowFlashbacks => 'Show Flashbacks';
+
+  @override
+  String get settingsChangeMoodIcons => 'Change Mood Icons';
+
+  @override
+  String get moodIconPrompt => 'Enter an icon';
+
+  @override
+  String get moodVeryUnpleasant => 'Very Unpleasant';
+
+  @override
+  String get moodUnpleasant => 'Unpleasant';
+
+  @override
+  String get moodNeutral => 'Neutral';
+
+  @override
+  String get moodPleasant => 'Pleasant';
+
+  @override
+  String get moodVeryPleasant => 'Very Pleasant';
+
+  @override
+  String get settingsFlashbacksViewLayout => 'Flashbacks View Layout';
+
+  @override
+  String get settingsGalleryViewLayout => 'Gallery View Layout';
+
+  @override
+  String get settingsHideImagesInGallery => 'Hide Images In Gallery';
+
+  @override
+  String get settingsHideImages => 'Hide Images';
+
+  @override
+  String get pageCalendarTitle => 'Calendar';
+
+  @override
+  String get viewLayoutList => 'List';
+
+  @override
+  String get viewLayoutGrid => 'Grid';
+
+  @override
+  String get settingsNotificationsTitle => 'Notifications';
+
+  @override
+  String get settingsDailyReminderOnboarding =>
+      'Enable daily reminders to keep yourself consistent!';
+
+  @override
+  String get settingsNotificationsPermissionsPrompt =>
+      'The \'schedule alarms\' permission will be requested to send the reminder at a random moment or at your preferred time.';
+
+  @override
+  String get settingsDailyReminderTitle => 'Daily Reminder';
+
+  @override
+  String get settingsOnThisDayDescription => 'Revisit past memories';
+
+  @override
+  String get settingsDailyReminderDescription => 'A gentle reminder each day';
+
+  @override
+  String get settingsReminderTime => 'Reminder Time';
+
+  @override
+  String get settingsFixedReminderTimeTitle => 'Fixed Reminder Time';
+
+  @override
+  String get settingsFixedReminderTimeDescription =>
+      'Pick a fixed time for the reminder';
+
+  @override
+  String get settingsAlwaysSendReminderTitle => 'Always Send Reminder';
+
+  @override
+  String get settingsAlwaysSendReminderDescription =>
+      'Send reminder even if a log was already started';
+
+  @override
+  String get settingsCustomizeNotificationTitle => 'Customize Notifications';
+
+  @override
+  String get settingsTemplatesTitle => 'Templates';
+
+  @override
+  String get settingsDefaultTemplate => 'Default Template';
+
+  @override
+  String get manageTemplates => 'Manage Templates';
+
+  @override
+  String get addTemplate => 'Add a Template';
+
+  @override
+  String get newTemplate => 'New Template';
+
+  @override
+  String get noTemplateTitle => 'None';
+
+  @override
+  String get noTemplatesDescription => 'No templates created yet…';
+
+  @override
+  String get templateVariableTime => 'Time';
+
+  @override
+  String get templateDefaultTimestampTitle => 'Timestamp';
+
+  @override
+  String templateDefaultTimestampBody(Object date, Object time) {
+    return '$date - $time:';
+  }
+
+  @override
+  String get templateDefaultSummaryTitle => 'Day Summary';
+
+  @override
+  String get templateDefaultSummaryBody => '### Summary\n- \n\n### Quote\n> ';
+
+  @override
+  String get templateDefaultReflectionTitle => 'Reflection';
+
+  @override
+  String get templateDefaultReflectionBody =>
+      '### What did you enjoy about today?\n- \n\n### What are you thankful for?\n- \n\n### What are you looking forward to?\n- ';
+
+  @override
+  String get settingsTagsTitle => 'Tags';
+
+  @override
+  String get manageTags => 'Manage Tags';
+
+  @override
+  String get tagTypeLabelTitle => 'Label';
+
+  @override
+  String get tagTypeTrackerTitle => 'Tracker';
+
+  @override
+  String get nameHint => 'Name';
+
+  @override
+  String get tagColorLabel => 'Color';
+
+  @override
+  String get iconPickerTitle => 'Choose Icon';
+
+  @override
+  String get iconPickerIconsTab => 'Icons';
+
+  @override
+  String get iconPickerCustomTab => 'Custom';
+
+  @override
+  String get iconPickerSearchHint => 'Search icons…';
+
+  @override
+  String get colorPickerTitle => 'Choose Color';
+
+  @override
+  String get colorPickerPaletteTab => 'Colors';
+
+  @override
+  String get iconGroupMoodPeople => 'Mood & People';
+
+  @override
+  String get iconGroupHealth => 'Health';
+
+  @override
+  String get iconGroupWorkFinance => 'Work & Finance';
+
+  @override
+  String get iconGroupHabitsGoals => 'Habits & Goals';
+
+  @override
+  String get iconGroupNature => 'Nature';
+
+  @override
+  String get iconGroupFoodDrink => 'Food & Drink';
+
+  @override
+  String get iconGroupHome => 'Home';
+
+  @override
+  String get iconGroupTravel => 'Travel';
+
+  @override
+  String get iconGroupSymbols => 'Symbols';
+
+  @override
+  String get tagCategoryLabel => 'Category';
+
+  @override
+  String get tagLabel => 'Tag';
+
+  @override
+  String get tagCategoryUncategorized => 'Uncategorized';
+
+  @override
+  String get newCategoryTitle => 'New Category';
+
+  @override
+  String get shareButtonLabel => 'Share';
+
+  @override
+  String get importErrorDescription => 'Failed to import file!';
+
+  @override
+  String get exportErrorDescription => 'Failed to export file!';
+
+  @override
+  String get deleteTitle => 'Delete';
+
+  @override
+  String deleteTagMessage(num count, Object name) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: ' It is used in $count logs.',
+      one: ' It is used in 1 log.',
+      zero: '',
+    );
+    return 'Delete \"$name\"?$_temp0';
+  }
+
+  @override
+  String deleteCategoryMessage(num count, Object name) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: ' Its $count tags will also be deleted.',
+      one: ' Its 1 tag will also be deleted.',
+      zero: '',
+    );
+    return 'Delete \"$name\"?$_temp0';
+  }
+
+  @override
+  String deleteTemplateMessage(Object name) {
+    return 'Delete \"$name\"?';
+  }
+
+  @override
+  String get filterTagsTitle => 'Filter';
+
+  @override
+  String get tagFilterModeAny => 'Any Tag';
+
+  @override
+  String get tagFilterModeAll => 'All Tags';
+
+  @override
+  String get clearAllFilters => 'Clear All';
+
+  @override
+  String get noTagsFilterLabel => 'No Tags';
+
+  @override
+  String get clearFilter => 'Clear';
+
+  @override
+  String showLogsCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Show $count logs',
+      one: 'Show $count log',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get filterPillAttachments => 'Attachments';
+
+  @override
+  String get filterPillKeywords => 'Keywords';
+
+  @override
+  String get noMoodFilterLabel => 'No Mood';
+
+  @override
+  String get noAttachmentsFilterLabel => 'No Attachments';
+
+  @override
+  String get noTextFilterLabel => 'No Text';
+
+  @override
+  String partialMatchCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count partial matches',
+      one: '$count partial match',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String tagCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tags',
+      one: '$count tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dateFilterLastMonths(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Last $count months',
+      one: 'Last month',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dateFilterCustomRange => 'Custom range';
+
+  @override
+  String get keywordFilterHint => 'Add a keyword…';
+
+  @override
+  String get keywordFilterMatchAll => 'All keywords';
+
+  @override
+  String get keywordFilterMatchAny => 'Any keyword';
+
+  @override
+  String get keywordFilterMatchCase => 'Match case';
+
+  @override
+  String keywordCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count keywords',
+      one: '$count keyword',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dateFilterRange(String start, String end) {
+    return '$start – $end';
+  }
+
+  @override
+  String get addTagsTitle => 'Add Tags';
+
+  @override
+  String get addTagsSearchHint => 'Search tags…';
+
+  @override
+  String get tagPickerSortManualLabel => 'Manual order';
+
+  @override
+  String get tagPickerSortUsageLabel => 'Sort by usage';
+
+  @override
+  String get tagFavoriteName => 'Favorite';
+
+  @override
+  String get tagEnergyName => 'Energy';
+
+  @override
+  String get tagCategoryPeopleName => 'People';
+
+  @override
+  String get tagCategoryActivitiesName => 'Activities';
+
+  @override
+  String get tagExerciseName => 'Exercise';
+
+  @override
+  String get tagSocializingName => 'Socializing';
+
+  @override
+  String get tagHobbyName => 'Hobby';
+
+  @override
+  String get tagEntertainmentName => 'Entertainment';
+
+  @override
+  String get tagDiningName => 'Dining';
+
+  @override
+  String get tagChoresName => 'Chores';
+
+  @override
+  String get tagCategoryEmotionsName => 'Emotions';
+
+  @override
+  String get tagExcitedName => 'Excited';
+
+  @override
+  String get tagGratefulName => 'Grateful';
+
+  @override
+  String get tagCalmName => 'Calm';
+
+  @override
+  String get tagTiredName => 'Tired';
+
+  @override
+  String get tagAnxiousName => 'Anxious';
+
+  @override
+  String get tagAnnoyedName => 'Annoyed';
+
+  @override
+  String get welcomeLogBodyText =>
+      '## Welcome to Daily You\n\n> Every day is worth remembering, capture it!\n\n**Daily You** is free, [open source](https://github.com/Demizo/Daily_You), and community supported. Built around the belief that your diary should be yours, not a product:\n\n- No ads\n- No locked features\n- No tracking or data collection\n\nWhether you\'re journaling, reflecting, or just noting what made you smile, **Daily You** gives you a private space that\'s _truly your own_.';
+
+  @override
+  String get settingsStorageTitle => 'Storage & Sync';
+
+  @override
+  String get settingsImageQuality => 'Image Quality';
+
+  @override
+  String get settingsMediaQualityTitle => 'Media Quality';
+
+  @override
+  String get imageQualityHigh => 'High';
+
+  @override
+  String get imageQualityMedium => 'Medium';
+
+  @override
+  String get imageQualityLow => 'Low';
+
+  @override
+  String get imageQualityNoCompression => 'No Compression';
+
+  @override
+  String get settingsStorageUsage => 'Storage Usage';
+
+  @override
+  String get settingsLogFolder => 'Log Folder';
+
+  @override
+  String get settingsImageFolder => 'Image Folder';
+
+  @override
+  String get settingsExternalSyncTitle => 'Sync with External Location';
+
+  @override
+  String get chooseFolderHint => 'Choose a folder';
+
+  @override
+  String get warningTitle => 'Warning';
+
+  @override
+  String get logFolderWarningDescription =>
+      'The selected folder already contains a \'daily_you.db\' file, it will be used to overwrite your existing logs!';
+
+  @override
+  String get errorTitle => 'Error';
+
+  @override
+  String get logFolderErrorDescription => 'Failed to change log folder!';
+
+  @override
+  String get imageFolderErrorDescription => 'Failed to change image folder!';
+
+  @override
+  String get syncErrorDescription =>
+      'Failed to sync with the external location!';
+
+  @override
+  String get backupErrorDescription => 'Failed to create backup!';
+
+  @override
+  String get restoreErrorDescription => 'Failed to restore backup!';
+
+  @override
+  String get settingsBackupRestoreTitle => 'Backup & Restore';
+
+  @override
+  String get settingsBackup => 'Backup';
+
+  @override
+  String get settingsRestore => 'Restore';
+
+  @override
+  String get settingsRestorePromptDescription =>
+      'Restoring a backup will overwrite your existing data!';
+
+  @override
+  String get settingsBackupPasswordProtect => 'Password Protect Backups';
+
+  @override
+  String get backupEncryptedTitle => 'Encrypted Backup';
+
+  @override
+  String get backupEncryptedContent => 'This backup is password protected.';
+
+  @override
+  String get settingsAutoBackup => 'Automatic Backups';
+
+  @override
+  String get settingsAutoBackupLocation => 'Backup Location';
+
+  @override
+  String get settingsAutoBackupInterval => 'Backup Interval';
+
+  @override
+  String get settingsAutoBackupIntervalDaily => 'Daily';
+
+  @override
+  String get settingsAutoBackupIntervalWeekly => 'Weekly';
+
+  @override
+  String get settingsAutoBackupIntervalMonthly => 'Monthly';
+
+  @override
+  String get settingsAutoBackupMaxCount => 'Backups To Keep';
+
+  @override
+  String get settingsAutoBackupRequireCharging => 'Only While Charging';
+
+  @override
+  String settingsBackupLast(Object time) {
+    return 'Last backup $time';
+  }
+
+  @override
+  String get settingsBackupNever => 'Never backed up';
+
+  @override
+  String settingsAutoBackupNext(Object time) {
+    return 'Next backup $time';
+  }
+
+  @override
+  String get settingsAutoBackupKeepAll => 'All';
+
+  @override
+  String get autoBackupFailedTitle => 'Backup Failed';
+
+  @override
+  String tranferStatus(Object percent) {
+    return 'Transferring… $percent%';
+  }
+
+  @override
+  String creatingBackupStatus(Object percent) {
+    return 'Creating Backup… $percent%';
+  }
+
+  @override
+  String restoringBackupStatus(Object percent) {
+    return 'Restoring Backup… $percent%';
+  }
+
+  @override
+  String encryptingBackupStatus(Object percent) {
+    return 'Encrypting Backup… $percent%';
+  }
+
+  @override
+  String decryptingBackupStatus(Object percent) {
+    return 'Decrypting Backup… $percent%';
+  }
+
+  @override
+  String get cleanUpStatus => 'Cleaning Up…';
+
+  @override
+  String migratingImagesStatus(Object current, Object total) {
+    return 'Migrating photos… $current/$total';
+  }
+
+  @override
+  String get settingsExport => 'Export';
+
+  @override
+  String get settingsExportToAnotherFormat => 'Export To Another Format';
+
+  @override
+  String get settingsExportFormatDescription =>
+      'This should not be used as a backup!';
+
+  @override
+  String get exportLogs => 'Export Logs';
+
+  @override
+  String get exportImages => 'Export Images';
+
+  @override
+  String get exportIncludeTitle => 'Include';
+
+  @override
+  String get settingsImport => 'Import';
+
+  @override
+  String get settingsImportFromAnotherApp => 'Import From Another App';
+
+  @override
+  String get settingsTranslateCallToAction =>
+      'Everyone should have access to a journal!';
+
+  @override
+  String get settingsHelpTranslate => 'Help Translate';
+
+  @override
+  String get importLogs => 'Import Logs';
+
+  @override
+  String get importImages => 'Import Images';
+
+  @override
+  String get logFormatTitle => 'Choose Format';
+
+  @override
+  String get logFormatDescription =>
+      'Another app\'s format may not support all features. Please report any issues since third party formats may change at any time. This will not impact existing logs!';
+
+  @override
+  String get formatDailyYouJson => 'Daily You (JSON)';
+
+  @override
+  String get formatDaybook => 'Daybook';
+
+  @override
+  String get formatDaylio => 'Daylio';
+
+  @override
+  String get formatDiarium => 'Diarium';
+
+  @override
+  String get formatDiaro => 'Diaro';
+
+  @override
+  String get formatMyBrain => 'My Brain';
+
+  @override
+  String get formatOneShot => 'OneShot';
+
+  @override
+  String get formatPixels => 'Pixels';
+
+  @override
+  String get formatMarkdown => 'Markdown';
+
+  @override
+  String get formatCsv => 'CSV';
+
+  @override
+  String get formatJson => 'JSON';
+
+  @override
+  String get settingsDeleteAllLogsTitle => 'Delete All Logs';
+
+  @override
+  String get settingsDeleteAllLogsDescription =>
+      'Do you want to delete all of your logs?';
+
+  @override
+  String settingsDeleteAllLogsPrompt(Object prompt) {
+    return 'Enter \'$prompt\' to confirm. This cannot be undone!';
+  }
+
+  @override
+  String get settingsLanguageTitle => 'Language';
+
+  @override
+  String get settingsAppLanguageTitle => 'App Language';
+
+  @override
+  String get settingsOverrideAppLanguageTitle => 'Override App Language';
+
+  @override
+  String get settingsSecurityTitle => 'Security';
+
+  @override
+  String get settingsSecurityRequirePassword => 'Require Password';
+
+  @override
+  String get settingsSecurityEnterPassword => 'Enter Password';
+
+  @override
+  String get settingsSecuritySetPassword => 'Set Password';
+
+  @override
+  String get settingsSecurityChangePassword => 'Change Password';
+
+  @override
+  String get settingsSecurityPassword => 'Password';
+
+  @override
+  String get settingsSecurityConfirmPassword => 'Confirm Password';
+
+  @override
+  String get settingsSecurityOldPassword => 'Old Password';
+
+  @override
+  String get settingsSecurityIncorrectPassword => 'Incorrect Password';
+
+  @override
+  String get settingsSecurityPasswordsDoNotMatch => 'Passwords do not match';
+
+  @override
+  String get requiredPrompt => 'Required';
+
+  @override
+  String get settingsSecurityBiometricUnlock => 'Biometric Unlock';
+
+  @override
+  String get unlockAppPrompt => 'Unlock the app';
+
+  @override
+  String get settingsAboutTitle => 'About';
+
+  @override
+  String get settingsVersion => 'Version';
+
+  @override
+  String get settingsLicense => 'License';
+
+  @override
+  String get licenseGPLv3 => 'GPL-3.0';
+
+  @override
+  String get settingsSourceCode => 'Source Code';
+
+  @override
+  String get settingsOpenSourceLicenses => 'Open Source Licenses';
+
+  @override
+  String get settingsMadeWithLove => 'Made with ❤️';
+
+  @override
+  String get settingsConsiderSupporting => 'consider supporting';
+
+  @override
+  String get imagesTitle => 'Images';
+
+  @override
+  String get audioTitle => 'Audio';
+
+  @override
+  String get videoTitle => 'Video';
+
+  @override
+  String get tagMoodTitle => 'Mood';
+
+  @override
+  String get calendarTagDisplayLabel => 'Tag';
+
+  @override
+  String get selectTagTitle => 'Select Tag';
+
+  @override
+  String get labelPresentLabel => 'Present';
+
+  @override
+  String get labelAbsentLabel => 'Absent';
+
+  @override
+  String get labelCoverageLabel => 'Coverage';
+
+  @override
+  String chartDistributionTitle(Object tag) {
+    return '$tag Distribution';
+  }
+
+  @override
+  String get shareAddToLogPickerTitle => 'Choose a log';
+
+  @override
+  String get attachmentAddErrorDescription => 'Failed to add attachment!';
+
+  @override
+  String get attachmentLoadFailed => 'Could not open this attachment';
+
+  @override
+  String get attachmentNoAppToOpen => 'No app can open this attachment';
+
+  @override
+  String get recorderDiscardTitle => 'Discard recording?';
+
+  @override
+  String get recorderDiscardDescription => 'This recording will be deleted.';
+
+  @override
+  String get recorderDiscardAction => 'Discard';
+
+  @override
+  String get recorderPermissionDenied =>
+      'Microphone permission is required to record audio';
+
+  @override
+  String get recorderErrorDescription => 'Failed to record audio!';
+
+  @override
+  String get gallerySelectAll => 'Select all';
+
+  @override
+  String get gallerySelectAction => 'Select';
+
+  @override
+  String get galleryOpenAction => 'Open';
+
+  @override
+  String deleteLogsMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Delete $count logs? Their attachments are removed with them.',
+      one: 'Delete $count log? Its attachments are removed with it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get newLogAction => 'New Log';
+
+  @override
+  String get removeTagsTitle => 'Remove Tags';
+
+  @override
+  String get applyButtonLabel => 'Apply';
+
+  @override
+  String addTagsConfirmMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Add the chosen tags to $count logs?',
+      one: 'Add the chosen tags to $count log?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String removeTagsConfirmMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Remove the chosen tags from $count logs?',
+      one: 'Remove the chosen tags from $count log?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String selectPartialMatchesMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Also select $count partial matches?',
+      one: 'Also select $count partial match?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get selectExactMatchesOnly => 'Exact only';
+
+  @override
+  String get selectIncludingPartialMatches => 'Include';
+
+  @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
+
+  @override
+  String get settingsAllowNetworkTitle => 'Allow network access';
+
+  @override
+  String get settingsAllowNetworkDescription =>
+      'Enable outbound network requests for online features';
+
+  @override
+  String get developerOptionsTitle => 'Developer options';
+
+  @override
+  String get developerOptionsDescription =>
+      'Diagnostic logging and developer tools';
+
+  @override
+  String get settingsDiagnosticLoggingTitle => 'Diagnostic logging';
+
+  @override
+  String get settingsDiagnosticLoggingDescription =>
+      'Record internal debug logs in memory';
+
+  @override
+  String get consoleLogsTitle => 'Console logs';
+
+  @override
+  String get clearLogs => 'Clear logs';
+
+  @override
+  String get copyLogs => 'Copy logs';
+
+  @override
+  String get logsCopied => 'Logs copied to clipboard';
+
+  @override
+  String get noLogsRecorded => 'No logs recorded yet';
+
+  @override
+  String get settingsScreenProtectionTitle => 'Screen protection';
+
+  @override
+  String get settingsScreenProtectionDescription =>
+      'Block screenshots and hide preview in recents';
+
+  @override
+  String get settingsEditorTitle => 'Editor';
+
+  @override
+  String get settingsMarkdownTitle => 'Markdown formatting';
+
+  @override
+  String get settingsMarkdownDescription =>
+      'Render rich text and markdown formatting';
+
+  @override
+  String get settingsAutocorrectTitle => 'Autocorrect';
+
+  @override
+  String get settingsAutocorrectDescription =>
+      'Enable keyboard autocorrect and spell check';
+
+  @override
+  String get settingsCapitalizationTitle => 'Auto-capitalization';
+
+  @override
+  String get settingsCapitalizationDescription =>
+      'Automatically capitalize sentences';
+
+  @override
+  String get securityQuestionTitle => 'Security question';
+
+  @override
+  String get securityQuestionDescription =>
+      'Recover your PIN using a security question';
+
+  @override
+  String get securityQuestionPrompt => 'Security question';
+
+  @override
+  String get securityAnswerPrompt => 'Security answer';
+
+  @override
+  String get forgotPasswordButton => 'Forgot PIN?';
+
+  @override
+  String get securityQuestionWrongAnswer => 'Incorrect answer';
+
+  @override
+  String get securityQuestionResetPrompt => 'PIN has been reset.';
+
+  @override
+  String get reminderDaysTitle => 'Reminder days';
+
+  @override
+  String get alwaysOpenNewLogTitle => 'Open new log on launch';
+
+  @override
+  String get alwaysOpenNewLogDescription =>
+      'Automatically open the editor when starting the app';
+
+  @override
+  String get calendarStreaksTitle => 'Streaks & indicators';
+
+  @override
+  String get settingsPaletteStyle => 'Palette style';
+
+  @override
+  String get settingsAppFont => 'Font style';
+
+  @override
+  String get settingsExportPreferences => 'Export app settings';
+
+  @override
+  String get settingsRestorePreferences => 'Restore app settings';
+
+  @override
+  String get settingsRestorePreferencesConfirm =>
+      'Restore appearance and editor preferences? Your journal and security settings stay unchanged.';
+
+  @override
+  String get chooseMoodEmoji => 'Choose emoji';
+}

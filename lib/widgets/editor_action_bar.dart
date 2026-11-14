@@ -1,7 +1,12 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'dart:async';
 
 import 'package:daily_you/models/person.dart';
 import 'package:daily_you/models/tag.dart';
+import 'package:daily_you/layouts/window_size_class.dart';
 import 'package:daily_you/models/template.dart';
 import 'package:daily_you/providers/people_provider.dart';
 import 'package:daily_you/providers/tags_provider.dart';
@@ -14,6 +19,7 @@ import 'package:daily_you/widgets/editor_action_bar/toolbar_actions.dart';
 import 'package:daily_you/widgets/editor_action_bar/action_bar_toggle_button.dart';
 import 'package:daily_you/widgets/editor_action_bar/toolbar_entry.dart';
 import 'package:daily_you/widgets/editor_action_bar/toolbar_focus_restorer.dart';
+import 'package:daily_you/widgets/editor_action_bar/toolbar_menu_action.dart';
 import 'package:daily_you/widgets/editor_action_bar/toolbar_morph.dart';
 import 'package:daily_you/widgets/editor_action_bar/toolbar_overflow_popup.dart';
 import 'package:daily_you/widgets/template_select_popup.dart';
@@ -48,9 +54,6 @@ class EditorActionBar extends StatefulWidget {
   /// Space host pages reserve so content doesn't sit behind the bar
   static double reservedHeight(BuildContext context) =>
       DockMetrics.reservedHeight(context);
-
-  /// Threshold for wide screen layout
-  static const double wideBreakpoint = 600.0;
 
   static const double _dividerWidth = 8.0;
 
@@ -166,8 +169,13 @@ class _EditorActionBarState extends State<EditorActionBar> {
     return _spaced([
       if (widget.showTemplateButton) _templateEntry(metrics),
       for (final action in widget.mainActions ?? const <ToolbarAction>[])
-        _iconEntry(metrics, action.icon, action.onPressed,
-            claimsFocus: false, reconnectsKeyboard: action.mayLeaveApp),
+        switch (action.menu) {
+          null => _iconEntry(metrics, action.icon, action.onPressed!,
+              claimsFocus: false, reconnectsKeyboard: action.mayLeaveApp),
+          [final only] => _iconEntry(metrics, Icon(only.icon), only.onSelected,
+              claimsFocus: false, reconnectsKeyboard: true),
+          _ => _menuIconEntry(metrics, action),
+        },
     ]);
   }
 
@@ -181,8 +189,8 @@ class _EditorActionBarState extends State<EditorActionBar> {
         _dividerEntry(),
       ],
       for (final action in markdownActions(context, widget.controller))
-        _iconEntry(metrics, action.icon, action.onPressed,
-            reconnectsKeyboard: action.mayLeaveApp),
+        _iconEntry(metrics, action.icon, action.onPressed!,
+            isActive: action.isActive, reconnectsKeyboard: action.mayLeaveApp),
       if (undoController != null) ...[
         _dividerEntry(),
         _undoEntry(metrics, undoController, isUndo: true),
@@ -218,19 +226,59 @@ class _EditorActionBarState extends State<EditorActionBar> {
     DockMetrics metrics,
     Widget icon,
     FutureOr<void> Function() action, {
+    bool Function()? isActive,
     bool claimsFocus = true,
     bool reconnectsKeyboard = false,
   }) {
     return ToolbarEntry(
       width: metrics.buttonSize,
-      build: (context, dismissOverflow) => ToolbarIconButton(
-        size: metrics.buttonSize,
-        icon: icon,
-        onPressed: () {
-          dismissOverflow?.call();
-          _focusRestorer.run(action,
-              claimsFocus: claimsFocus, reconnectsKeyboard: reconnectsKeyboard);
-        },
+      build: (context, dismissOverflow) {
+        Widget button(bool selected) => ToolbarIconButton(
+              size: metrics.buttonSize,
+              icon: icon,
+              selected: selected,
+              dockProgress: dismissOverflow == null ? metrics.progress : 1,
+              onPressed: () {
+                dismissOverflow?.call();
+                _focusRestorer.run(action,
+                    claimsFocus: claimsFocus,
+                    reconnectsKeyboard: reconnectsKeyboard);
+              },
+            );
+
+        if (isActive == null) return button(false);
+        return ListenableBuilder(
+          listenable: widget.controller,
+          builder: (context, _) => button(isActive()),
+        );
+      },
+    );
+  }
+
+  ToolbarEntry _menuIconEntry(DockMetrics metrics, ToolbarAction action) {
+    return ToolbarEntry(
+      width: metrics.buttonSize,
+      build: (context, dismissOverflow) => Builder(
+        builder: (buttonContext) => ToolbarIconButton(
+          size: metrics.buttonSize,
+          icon: action.icon,
+          onPressed: () {
+            dismissOverflow?.call();
+            _overflowPopup.showMenu(
+              buttonContext,
+              [
+                for (final item in action.menu!)
+                  ToolbarMenuAction(
+                    icon: item.icon,
+                    label: item.label,
+                    onSelected: () => _focusRestorer.run(item.onSelected,
+                        claimsFocus: false, reconnectsKeyboard: true),
+                  ),
+              ],
+              barPadding: metrics.pillPadding,
+            );
+          },
+        ),
       ),
     );
   }
@@ -354,8 +402,7 @@ class _EditorActionBarState extends State<EditorActionBar> {
     final showToggle = widget.mainActions != null && _isEditing;
     final showingMainActions = widget.mainActions != null &&
         (!_isEditing || _showMainActionsWhileFocused);
-    final isWide =
-        MediaQuery.sizeOf(context).width >= EditorActionBar.wideBreakpoint;
+    final isWide = WindowSizeClass.of(context).isWide;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(

@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'package:daily_you/l10n/generated/app_localizations.dart';
 import 'package:daily_you/utils/password_store.dart';
 import 'package:daily_you/utils/security_question_helper.dart';
@@ -379,7 +383,8 @@ class _AuthPopupState extends State<AuthPopup> {
                         ? const CircularProgressIndicator()
                         : IconButton.filled(
                             onPressed: _handleSubmit,
-                            icon: Icon(Icons.check_rounded),
+                            icon: const Icon(Icons.check_rounded),
+                            color: Theme.of(context).colorScheme.onPrimary,
                             iconSize: 28,
                           ),
                   ],

@@ -1,9 +1,14 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:daily_you/database/image_storage.dart';
+import 'package:daily_you/database/attachment_storage.dart';
 import 'package:daily_you/file_bytes_cache.dart';
+import 'package:daily_you/models/attachment.dart';
 import 'package:daily_you/storage/file_store.dart';
 import 'package:daily_you/storage/local_file_store.dart';
 import 'package:daily_you/utils/exif_orientation.dart';
@@ -34,6 +39,9 @@ class ResizeResponse {
 class LocalImageCache {
   static final LocalImageCache instance = LocalImageCache._internal();
 
+  static const int thumbnailWidth = 100;
+  static const int previewWidth = 500;
+
   final Logger _logger = Logger('LocalImageCache');
 
   final CacheManager _diskCache;
@@ -55,7 +63,8 @@ class LocalImageCache {
           ),
         ) {
     _initResizeIsolate();
-    ImageStorage.instance.cacheVersion.addListener(_onImagesInvalidated);
+    AttachmentStorage.instance.cacheVersion.addListener(_onImagesInvalidated);
+    AttachmentStorage.instance.deletions.listen(_onAttachmentDeleted);
   }
 
   void _onImagesInvalidated() {
@@ -63,8 +72,21 @@ class LocalImageCache {
     unawaited(_diskCache.emptyCache());
   }
 
+  void _onAttachmentDeleted(({AttachmentType type, String fileName}) deleted) {
+    if (deleted.type != AttachmentType.image) return;
+    for (final width in [thumbnailWidth, previewWidth]) {
+      final key = _key(deleted.fileName, width);
+      imageCache.remove(key);
+      unawaited(_diskCache.removeFile(key));
+    }
+  }
+
+  static String _key(String originalPath, int width) =>
+      '${originalPath}_w$width';
+
   Future<void> _initResizeIsolate() async {
-    final imgFolderPath = await ImageStorage.instance.getInternalFolder();
+    final imgFolderPath = await AttachmentStorage.instance
+        .getInternalFolder(AttachmentType.image);
     tempImgFolderPath = (await getTemporaryDirectory()).path;
     _temporaryImageStore = LocalFileStore(tempImgFolderPath!);
 
@@ -101,7 +123,7 @@ class LocalImageCache {
   }
 
   Future<void> primeCache(String originalPath, int width) async {
-    final key = '${originalPath}_w$width';
+    final key = _key(originalPath, width);
 
     if (_resizeSendPort == null ||
         _pending.contains(key) ||
@@ -118,10 +140,11 @@ class LocalImageCache {
       String originalPath, int width) async {
     // Skip GIFs
     if (extension(originalPath).toLowerCase() == ".gif") {
-      return await ImageStorage.instance.getBytes(originalPath);
+      return await AttachmentStorage.instance
+          .getBytes(originalPath, AttachmentType.image);
     }
 
-    final key = '${originalPath}_w$width';
+    final key = _key(originalPath, width);
 
     // Memory cache
     final bytes = imageCache.get(key);
@@ -141,7 +164,8 @@ class LocalImageCache {
     // Prime cache in the background
     primeCache(originalPath, width);
 
-    final originalBytes = await ImageStorage.instance.getBytes(originalPath);
+    final originalBytes = await AttachmentStorage.instance
+        .getBytes(originalPath, AttachmentType.image);
     if (originalBytes == null) return null;
 
     return originalBytes;

@@ -21,6 +21,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get actionTakePhoto => '拍张照';
 
   @override
+  String get actionTakeVideo => '拍视频';
+
+  @override
+  String get actionRecordAudio => '录音';
+
+  @override
+  String get actionAddImage => '添加图片';
+
+  @override
+  String get actionAddVideo => '添加视频';
+
+  @override
+  String get actionAddAudio => '添加音频';
+
+  @override
   String get actionToday => '今天';
 
   @override
@@ -174,6 +189,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String chartInfluencesTitle(Object tag) {
+    return '$tag 影响因素';
+  }
+
+  @override
   String get chartGroupingLabel => '群组';
 
   @override
@@ -232,6 +252,108 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String streakDayLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '连续天数',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsLogsLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '日迹',
+      one: '日迹',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsWordsLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '字',
+      one: '字',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsDaysLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '天',
+      one: '天',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statsLongestStreakTitle => '最长连续天数';
+
+  @override
+  String get statsWritingTitle => '写作';
+
+  @override
+  String get statsWordsPerLogTitle => '每篇日迹字数';
+
+  @override
+  String get statsLongestLogTitle => '最长日迹';
+
+  @override
+  String statsMostActiveTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '最活跃的几天',
+      one: '最活跃的一天',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsDaysOfRange(int written, int total) {
+    final intl.NumberFormat writtenNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String writtenString = writtenNumberFormat.format(written);
+    final intl.NumberFormat totalNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String totalString = totalNumberFormat.format(total);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$totalString 天',
+      one: '$totalString 天',
+    );
+    return '$writtenString of $_temp0';
+  }
+
+  @override
+  String get statsAverageTitle => '平均';
+
+  @override
+  String get statsHighestTitle => '最高';
+
+  @override
+  String get statsLowestTitle => '最低';
+
+  @override
+  String get statsDaysLoggedTitle => '已记录天数';
+
+  @override
+  String get statsOfDaysLabel => '天数占比';
+
+  @override
+  String get statsCustomizeTitle => '自定义';
+
+  @override
   String get errorExternalStorageAccessTitle => '无法访问外部存储';
 
   @override
@@ -242,9 +364,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get errorExternalStorageAccessContinue => '继续使用本地数据库';
 
   @override
-  String get errorExternalStorageChooseLocation => 'Choose Another Location';
-
-  @override
   String get databaseMigrationErrorTitle => '无法移动你的数据';
 
   @override
@@ -253,6 +372,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get databaseMigrationErrorRetry => '重试';
+
+  @override
+  String get databaseNewerErrorTitle => '需要更新';
+
+  @override
+  String get databaseNewerErrorDescription =>
+      '您的数据已由更新版本的 Daily You 保存。此版本无法安全打开该数据。请更新应用以继续。';
 
   @override
   String get errorReport => '报告问题';
@@ -277,6 +403,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get deletePhotoDescription => '您确定要删除这张图片吗？';
+
+  @override
+  String get deleteAttachmentTitle => '删除附件';
+
+  @override
+  String get deleteAttachmentDescription => '您要删除此附件吗？';
+
+  @override
+  String get largeAttachmentWarningTitle => '大型附件';
+
+  @override
+  String get largeAttachmentWarningDescription => '此附件较大，将增加您的备份大小。';
+
+  @override
+  String get dontShowAgain => '不再显示';
 
   @override
   String get pageSettingsTitle => '设置';
@@ -328,6 +469,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get moodIconPrompt => '输入一个图标';
+
+  @override
+  String get moodVeryUnpleasant => '非常不愉快';
+
+  @override
+  String get moodUnpleasant => '不愉快';
+
+  @override
+  String get moodNeutral => '一般';
+
+  @override
+  String get moodPleasant => '愉快';
+
+  @override
+  String get moodVeryPleasant => '非常愉快';
 
   @override
   String get settingsFlashbacksViewLayout => '往昔重现的视图布局';
@@ -563,6 +719,99 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noTagsFilterLabel => '无标签';
 
   @override
+  String get clearFilter => 'Clear';
+
+  @override
+  String showLogsCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Show $count logs',
+      one: 'Show $count log',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get filterPillAttachments => 'Attachments';
+
+  @override
+  String get filterPillKeywords => 'Keywords';
+
+  @override
+  String get noMoodFilterLabel => 'No Mood';
+
+  @override
+  String get noAttachmentsFilterLabel => 'No Attachments';
+
+  @override
+  String get noTextFilterLabel => 'No Text';
+
+  @override
+  String partialMatchCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count partial matches',
+      one: '$count partial match',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String tagCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tags',
+      one: '$count tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dateFilterLastMonths(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Last $count months',
+      one: 'Last month',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dateFilterCustomRange => 'Custom range';
+
+  @override
+  String get keywordFilterHint => 'Add a keyword…';
+
+  @override
+  String get keywordFilterMatchAll => 'All keywords';
+
+  @override
+  String get keywordFilterMatchAny => 'Any keyword';
+
+  @override
+  String get keywordFilterMatchCase => 'Match case';
+
+  @override
+  String keywordCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count keywords',
+      one: '$count keyword',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dateFilterRange(String start, String end) {
+    return '$start – $end';
+  }
+
+  @override
   String get addTagsTitle => '添加标签';
 
   @override
@@ -579,6 +828,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get tagEnergyName => '能量';
+
+  @override
+  String get tagCategoryPeopleName => '人物';
 
   @override
   String get tagCategoryActivitiesName => '活动';
@@ -627,10 +879,13 @@ class AppLocalizationsZh extends AppLocalizations {
       '## 欢迎使用 Daily You\n\n> 每一天都值得被记住、捕捉下来！\n\n**Daily You** 是免费的、[开源](https://github.com/TraxDinosaur/DailyYou)的，并由社区支持。建立在「你的日记应该属于你，而不是某个产品」这样的理念之上：\n\n- 无广告\n- 无锁定功能\n- 无追踪或资料收集\n\n无论你是在写日记、反思，或者只是记录让你开心的瞬间，**Daily You** 都为你提供一个_真正属于你_的私密空间。';
 
   @override
-  String get settingsStorageTitle => '存储';
+  String get settingsStorageTitle => '存储与同步';
 
   @override
   String get settingsImageQuality => '图像质量';
+
+  @override
+  String get settingsMediaQualityTitle => '媒体质量';
 
   @override
   String get imageQualityHigh => '高';
@@ -645,17 +900,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get imageQualityNoCompression => '无损';
 
   @override
+  String get settingsStorageUsage => '存储用量';
+
+  @override
   String get settingsLogFolder => '日迹存储目录';
 
   @override
   String get settingsImageFolder => '图片存储目录';
 
   @override
+  String get settingsExternalSyncTitle => '与外部存储位置同步';
+
+  @override
+  String get chooseFolderHint => '选择文件夹';
+
+  @override
   String get warningTitle => '警告';
 
   @override
   String get logFolderWarningDescription =>
-      '如果所选文件夹中已包含“daily_you.db”文件，它将被用于覆盖您现有的日迹！';
+      '所选文件夹中已包含“daily_you.db”文件，它将被用于覆盖您现有的日迹！';
 
   @override
   String get errorTitle => '错误';
@@ -665,6 +929,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get imageFolderErrorDescription => '无法更改图片目录！';
+
+  @override
+  String get syncErrorDescription => '与外部存储位置同步失败！';
 
   @override
   String get backupErrorDescription => '创建备份失败！';
@@ -785,6 +1052,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportImages => '导出图片';
 
   @override
+  String get exportIncludeTitle => '包含';
+
+  @override
   String get settingsImport => '导入数据';
 
   @override
@@ -835,6 +1105,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get formatMarkdown => 'Markdown';
+
+  @override
+  String get formatCsv => 'CSV';
+
+  @override
+  String get formatJson => 'JSON';
 
   @override
   String get settingsDeleteAllLogsTitle => '删除全部日迹';
@@ -923,6 +1199,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get imagesTitle => '图像';
 
   @override
+  String get audioTitle => '音频';
+
+  @override
+  String get videoTitle => '视频';
+
+  @override
   String get tagMoodTitle => '心情';
 
   @override
@@ -947,6 +1229,101 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get shareAddToLogPickerTitle => '选择日志';
+
+  @override
+  String get attachmentAddErrorDescription => '添加附件失败！';
+
+  @override
+  String get attachmentLoadFailed => '无法打开此附件';
+
+  @override
+  String get attachmentNoAppToOpen => '没有应用可以打开此附件';
+
+  @override
+  String get recorderDiscardTitle => '要丢弃录音吗？';
+
+  @override
+  String get recorderDiscardDescription => '此录音将被删除。';
+
+  @override
+  String get recorderDiscardAction => '丢弃';
+
+  @override
+  String get recorderPermissionDenied => '录制音频需要麦克风权限';
+
+  @override
+  String get recorderErrorDescription => '录制音频失败！';
+
+  @override
+  String get gallerySelectAll => 'Select all';
+
+  @override
+  String get gallerySelectAction => 'Select';
+
+  @override
+  String get galleryOpenAction => 'Open';
+
+  @override
+  String deleteLogsMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Delete $count logs? Their attachments are removed with them.',
+      one: 'Delete $count log? Its attachments are removed with it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get newLogAction => 'New Log';
+
+  @override
+  String get removeTagsTitle => 'Remove Tags';
+
+  @override
+  String get applyButtonLabel => 'Apply';
+
+  @override
+  String addTagsConfirmMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Add the chosen tags to $count logs?',
+      one: 'Add the chosen tags to $count log?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String removeTagsConfirmMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Remove the chosen tags from $count logs?',
+      one: 'Remove the chosen tags from $count log?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String selectPartialMatchesMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Also select $count partial matches?',
+      one: 'Also select $count partial match?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get selectExactMatchesOnly => 'Exact only';
+
+  @override
+  String get selectIncludingPartialMatches => 'Include';
+
+  @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
 
   @override
   String get settingsAllowNetworkTitle => 'Allow network access';
@@ -1055,6 +1432,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsAppFont => 'Font style';
+
+  @override
+  String get settingsExportPreferences => 'Export app settings';
+
+  @override
+  String get settingsRestorePreferences => 'Restore app settings';
+
+  @override
+  String get settingsRestorePreferencesConfirm =>
+      'Restore appearance and editor preferences? Your journal and security settings stay unchanged.';
+
+  @override
+  String get chooseMoodEmoji => 'Choose emoji';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -1071,7 +1461,22 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get dailyReminderDescription => '寫下我的日常紀錄…';
 
   @override
-  String get actionTakePhoto => '拍照';
+  String get actionTakePhoto => '拍照片';
+
+  @override
+  String get actionTakeVideo => '拍影片';
+
+  @override
+  String get actionRecordAudio => '錄音';
+
+  @override
+  String get actionAddImage => '新增照片';
+
+  @override
+  String get actionAddVideo => '新增影片';
+
+  @override
+  String get actionAddAudio => '新增音檔';
 
   @override
   String get actionToday => '今天';
@@ -1305,6 +1710,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get databaseMigrationErrorRetry => '重試';
 
   @override
+  String get databaseNewerErrorTitle => '需要更新';
+
+  @override
+  String get databaseNewerErrorDescription =>
+      '您的資料由較新版本的 Daily You 儲存，此版本無法安全地開啟它。請更新應用程式以繼續。';
+
+  @override
   String get errorReport => '報告問題';
 
   @override
@@ -1327,6 +1739,21 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get deletePhotoDescription => '您要刪除此照片嗎？';
+
+  @override
+  String get deleteAttachmentTitle => '刪除附件';
+
+  @override
+  String get deleteAttachmentDescription => '您要刪除這個附件嗎？';
+
+  @override
+  String get largeAttachmentWarningTitle => '大型附件';
+
+  @override
+  String get largeAttachmentWarningDescription => '此附件較大，會增加您的備份大小。';
+
+  @override
+  String get dontShowAgain => '不要再次顯示';
 
   @override
   String get pageSettingsTitle => '設定';
@@ -1378,6 +1805,21 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get moodIconPrompt => '輸入圖示';
+
+  @override
+  String get moodVeryUnpleasant => '非常不愉快';
+
+  @override
+  String get moodUnpleasant => '不愉快';
+
+  @override
+  String get moodNeutral => '中性';
+
+  @override
+  String get moodPleasant => '愉快';
+
+  @override
+  String get moodVeryPleasant => '非常愉快';
 
   @override
   String get settingsFlashbacksViewLayout => '往日重現檢視佈局';
@@ -1678,10 +2120,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
       '## 歡迎使用 Daily You\n\n> 每一天都值得被記住、被捕捉下來！\n\n**Daily You** 是免費的、[開源](https://github.com/TraxDinosaur/DailyYou)的，並由社群支援。建立在「你的日記應該屬於你，而不是某個產品」這樣的信念之上：\n\n- 無廣告\n- 無鎖定功能\n- 無追蹤或資料蒐集\n\n無論你是在寫日誌、反思，還是只是記錄讓你微笑的事，**Daily You** 都為你提供一個_真正屬於你_的私密空間。';
 
   @override
-  String get settingsStorageTitle => '存儲';
+  String get settingsStorageTitle => '存儲與同步';
 
   @override
   String get settingsImageQuality => '影像品質';
+
+  @override
+  String get settingsMediaQualityTitle => '媒體品質';
 
   @override
   String get imageQualityHigh => '高';
@@ -1696,17 +2141,26 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get imageQualityNoCompression => '不壓縮';
 
   @override
+  String get settingsStorageUsage => '儲存空間使用量';
+
+  @override
   String get settingsLogFolder => '紀錄資料夾';
 
   @override
   String get settingsImageFolder => '影像資料夾';
 
   @override
+  String get settingsExternalSyncTitle => '與外部儲存位置同步';
+
+  @override
+  String get chooseFolderHint => '選擇資料夾';
+
+  @override
   String get warningTitle => '警告';
 
   @override
   String get logFolderWarningDescription =>
-      '如果選定的資料夾中已經包含一個 \'daily_you.db\' 文件，它將覆蓋您現有的紀錄！';
+      '選定的資料夾中已經包含一個 \'daily_you.db\' 文件，它將覆蓋您現有的紀錄！';
 
   @override
   String get errorTitle => '錯誤';
@@ -1716,6 +2170,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get imageFolderErrorDescription => '更改影像資料夾失敗！';
+
+  @override
+  String get syncErrorDescription => '無法與外部儲存位置同步！';
 
   @override
   String get backupErrorDescription => '備份建立失敗！';
@@ -1834,6 +2291,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get exportImages => '匯出影像';
+
+  @override
+  String get exportIncludeTitle => '包含';
 
   @override
   String get settingsImport => '匯入';
@@ -1956,6 +2416,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get imagesTitle => '影像';
 
   @override
+  String get audioTitle => '音檔';
+
+  @override
+  String get videoTitle => '影片';
+
+  @override
   String get tagMoodTitle => '心情';
 
   @override
@@ -1980,4 +2446,28 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get shareAddToLogPickerTitle => '選擇一個紀錄';
+
+  @override
+  String get attachmentAddErrorDescription => '無法新增附件！';
+
+  @override
+  String get attachmentLoadFailed => '無法開啟此附件';
+
+  @override
+  String get attachmentNoAppToOpen => '沒有應用程式可以開啟此附件';
+
+  @override
+  String get recorderDiscardTitle => '要捨棄錄音嗎？';
+
+  @override
+  String get recorderDiscardDescription => '此錄音將會被刪除。';
+
+  @override
+  String get recorderDiscardAction => '捨棄';
+
+  @override
+  String get recorderPermissionDenied => '需要麥克風權限才能錄製音訊';
+
+  @override
+  String get recorderErrorDescription => '錄音失敗！';
 }

@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'package:daily_you/models/tag.dart';
 import 'package:daily_you/utils/tag_visuals.dart';
 import 'package:daily_you/widgets/tag_icon_glyph.dart';
@@ -36,13 +40,12 @@ class TagChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = tag.resolvedColor(context,
         fallback: Theme.of(context).colorScheme.secondary);
-    final screenWidth = MediaQuery.of(context).size.width;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxWidth = constraints.maxWidth.isFinite
             ? constraints.maxWidth
-            : screenWidth - 32;
+            : MediaQuery.sizeOf(context).width - 32;
         return ConstrainedBox(
           constraints: BoxConstraints(maxWidth: maxWidth),
           child: GestureDetector(

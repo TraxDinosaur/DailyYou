@@ -1,18 +1,25 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'dart:ui' as ui;
 
 import 'package:daily_you/l10n/generated/app_localizations.dart';
 import 'package:daily_you/models/entry.dart';
-import 'package:daily_you/models/image.dart';
 import 'package:daily_you/models/song.dart';
+import 'package:daily_you/models/attachment.dart';
 import 'package:daily_you/models/tag.dart';
 import 'package:daily_you/pages/edit_entry_page.dart';
 import 'package:daily_you/pages/entry_timeline_page.dart';
 import 'package:daily_you/providers/entries_provider.dart';
+import 'package:daily_you/providers/mood_scale_provider.dart';
 import 'package:daily_you/time_manager.dart';
 import 'package:daily_you/utils/tag_visuals.dart';
+import 'package:daily_you/widgets/attachment_cover_thumbnail.dart';
+import 'package:daily_you/widgets/cached_text.dart';
 import 'package:daily_you/widgets/day_menu.dart';
-import 'package:daily_you/widgets/local_image_loader.dart';
 import 'package:daily_you/widgets/tag_icon_glyph.dart';
+import 'package:daily_you/widgets/pixel_snap.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:daily_you/widgets/mood_icon.dart';
 import 'package:provider/provider.dart';
@@ -24,7 +31,7 @@ class EntryDayCell extends StatelessWidget {
   final ui.Image? dayNumber;
   final double cellSize;
   final List<Entry> entries;
-  final EntryImage? firstImage;
+  final List<EntryAttachment> coverCandidates;
   final EntrySong? firstSong;
 
   final bool showImages;
@@ -43,7 +50,7 @@ class EntryDayCell extends StatelessWidget {
     required this.dayNumber,
     required this.cellSize,
     required this.entries,
-    required this.firstImage,
+    required this.coverCandidates,
     this.firstSong,
     this.showImages = true,
     this.showMood = true,
@@ -121,14 +128,16 @@ class EntryDayCell extends StatelessWidget {
         ),
       );
     }
-    return Container(
-      width: 23,
-      height: 23,
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        shape: BoxShape.circle,
+    return PixelSnap(
+      child: Container(
+        width: 23,
+        height: 23,
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          shape: BoxShape.circle,
+        ),
+        child: Center(child: _buildTagIconGlyph(tag, color, 13, 14)),
       ),
-      child: Center(child: _buildTagIconGlyph(tag, color, 13, 14)),
     );
   }
 
@@ -149,16 +158,23 @@ class EntryDayCell extends StatelessWidget {
             align: TextAlign.center),
       );
     }
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        shape: BoxShape.circle,
+    return PixelSnap(
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          shape: BoxShape.circle,
+        ),
+        child: Center(child: _buildTagIconGlyph(tag, color, 22, 26)),
       ),
-      child: Center(child: _buildTagIconGlyph(tag, color, 22, 26)),
     );
   }
+
+  String get _dayLabel =>
+      '${isJalali ? TimeManager.jalaliDayNumber(date) : date.day}';
+
+  bool get _isToday => TimeManager.isSameDay(date, today);
 
   String _countLabel(int count) => count > 99 ? '99+' : '$count';
 
@@ -232,8 +248,6 @@ class EntryDayCell extends StatelessWidget {
           getEntries: () => entriesProvider.entries
               .where((entry) => TimeManager.isSameCalendarDayOfYear(
                   entry.timeCreate, date, isJalali))
-              .toList()
-              .reversed
               .toList(),
           labelBuilder: (context, entry) =>
               TimeManager.formatYear(entry.timeCreate, context),
@@ -249,6 +263,21 @@ class EntryDayCell extends StatelessWidget {
       ));
     }
   }
+
+  String _semanticsLabel(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final detail = entries.length > 1
+        ? l10n.logCount(entries.length)
+        : MoodScaleProvider.instance
+            .moodPrefixOf(entries.firstOrNull?.mood, l10n)
+            .trim();
+    return [TimeManager.formatDate(date, context), detail]
+        .where((part) => part.isNotEmpty)
+        .join('. ');
+  }
+
+  Widget _announce(BuildContext context, Widget child) => Semantics(
+      label: _semanticsLabel(context), excludeSemantics: true, child: child);
 
   @override
   Widget build(BuildContext context) {
@@ -268,7 +297,7 @@ class EntryDayCell extends StatelessWidget {
         hasOverrideTag && (!tagGoesCenter || isTrackerOverride);
 
     if (entries.isNotEmpty) {
-      final showImageBg = showImages && firstImage != null;
+      final showImageBg = showImages && coverCandidates.isNotEmpty;
       return MergeSemantics(
           child: GestureDetector(
         onTap: selectDay ??
@@ -286,140 +315,104 @@ class EntryDayCell extends StatelessWidget {
             },
         onLongPress:
             selectDay ?? () => _showPopupMenu(context, entriesProvider),
-        child: SizedBox(
-          width: cellSize,
-          height: cellSize,
-          child: Stack(
-            fit: StackFit.expand,
-            alignment: Alignment.center,
-            children: [
-              Container(
-                margin: EdgeInsets.only(
-                  top: 2,
-                  bottom: 2,
-                  left: connectLeft ? 0 : 2,
-                  right: connectRight ? 0 : 2,
-                ),
-                decoration: BoxDecoration(
-                  color: colorScheme.secondaryContainer,
-                  borderRadius: BorderRadius.horizontal(
-                    left: Radius.circular(connectLeft ? 2 : 8),
-                    right: Radius.circular(connectRight ? 2 : 8),
-                  ),
-                ),
-                clipBehavior: showImageBg ? Clip.hardEdge : Clip.none,
-                child: showImageBg
-                    ? LocalImageLoader(
-                        imagePath: firstImage!.imgPath,
-                        cacheSize: 100,
-                      )
-                    : Center(
-                        child: tagGoesCenter
-                            ? _buildTagCutoutCenter(
-                                context,
-                                calendarTagOverride!,
-                                overrideEntryTag,
-                                colorScheme)
-                            : !showImages &&
-                                    showMood &&
-                                    firstEntry?.mood != null
-                                ? Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: colorScheme.surface,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Center(
-                                      child: MoodIcon(
-                                        moodValue: firstEntry!.mood,
-                                        size: 28,
-                                        allowScaling: false,
-                                      ),
-                                    ),
-                                  )
-                                : Text(
-                                    '${isJalali ? TimeManager.jalaliDayNumber(date) : date.day}',
-                                    style: TextStyle(
-                                        color: colorScheme.onSecondaryContainer,
-                                        fontSize: 16)),
-                      ),
-              ),
-              if (showImageBg)
-                ExcludeSemantics(
-                  child: RawImage(
-                    image: dayNumber,
-                  ),
-                ),
-              if (firstSong != null)
-                Positioned(
-                  top: 4,
-                  left: 4,
-                  child: Container(
-                    width: 18,
-                    height: 18,
+        child: _announce(
+            context,
+            SizedBox(
+              width: cellSize,
+              height: cellSize,
+              child: Stack(
+                fit: StackFit.expand,
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    margin: EdgeInsets.fromLTRB(
+                        connectLeft ? 0 : 2, 2, connectRight ? 0 : 2, 2),
                     decoration: BoxDecoration(
-                      color: colorScheme.surface.withAlpha(220),
-                      shape: BoxShape.circle,
+                      color: colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.horizontal(
+                          left: Radius.circular(connectLeft ? 0 : 8),
+                          right: Radius.circular(connectRight ? 0 : 8)),
                     ),
-                    child: Center(
-                      child: Icon(
-                        Icons.music_note_rounded,
-                        size: 12,
-                        color: colorScheme.primary,
-                      ),
-                    ),
+                    clipBehavior: showImageBg ? Clip.hardEdge : Clip.none,
+                    child: showImageBg
+                        ? AttachmentCoverThumbnail(candidates: coverCandidates)
+                        : Center(
+                            child: tagGoesCenter
+                                ? _buildTagCutoutCenter(
+                                    context,
+                                    calendarTagOverride!,
+                                    overrideEntryTag,
+                                    colorScheme)
+                                : !showImages &&
+                                        showMood &&
+                                        firstEntry?.mood != null
+                                    ? PixelSnap(
+                                        child: Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          color: colorScheme.surface,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: MoodIcon(
+                                            moodValue: firstEntry!.mood,
+                                            size: 28,
+                                            allowScaling: false,
+                                          ),
+                                        ),
+                                      ))
+                                    : CachedText(_dayLabel,
+                                        size: 16,
+                                        color:
+                                            colorScheme.onSecondaryContainer),
+                          ),
                   ),
-                ),
-              if (entries.isNotEmpty &&
-                  !isMulti &&
-                  (!showMood || firstEntry?.mood == null))
-                Positioned(
-                  bottom: 4,
-                  child: Container(
-                    width: 5,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary,
-                      shape: BoxShape.circle,
-                    ),
+                  if (firstSong != null)
+                    const Positioned(
+                        right: 3,
+                        bottom: 3,
+                        child: Icon(Icons.music_note_rounded, size: 14)),
+                  if (entries.isNotEmpty && !showImageBg)
+                    const Positioned(
+                        bottom: 4, child: Icon(Icons.circle, size: 4)),
+                  if (showImageBg) RawImage(image: dayNumber),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: isMulti
+                        ? _countBadge(context, entries.length)
+                        : showImages && showMood && firstEntry!.mood != null
+                            ? PixelSnap(
+                                child: Container(
+                                width: 23,
+                                height: 23,
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surface.withAlpha(255),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: MoodIcon(
+                                    moodValue: firstEntry.mood,
+                                    size: 16,
+                                    allowScaling: false,
+                                  ),
+                                ),
+                              ))
+                            : const SizedBox.shrink(),
                   ),
-                ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: isMulti
-                    ? _countBadge(context, entries.length)
-                    : showImages && showMood && firstEntry!.mood != null
-                        ? Container(
-                            width: 23,
-                            height: 23,
-                            decoration: BoxDecoration(
-                              color: colorScheme.surface.withAlpha(255),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: MoodIcon(
-                                moodValue: firstEntry.mood,
-                                size: 16,
-                                allowScaling: false,
-                              ),
-                            ),
-                          )
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: tagGoesCorner
+                        ? _buildTagCutout(context, calendarTagOverride!,
+                            overrideEntryTag, colorScheme,
+                            iconOnly: tagGoesCenter)
                         : const SizedBox.shrink(),
+                  ),
+                ],
               ),
-              Positioned(
-                top: 0,
-                right: 0,
-                child: tagGoesCorner
-                    ? _buildTagCutout(context, calendarTagOverride!,
-                        overrideEntryTag, colorScheme,
-                        iconOnly: tagGoesCenter)
-                    : const SizedBox.shrink(),
-              ),
-            ],
-          ),
-        ),
+            )),
       ));
     } else {
       return MergeSemantics(
@@ -438,27 +431,29 @@ class EntryDayCell extends StatelessWidget {
                   },
               onLongPress:
                   selectDay ?? () => _showPopupMenu(context, entriesProvider),
-              child: SizedBox(
-                width: cellSize,
-                height: cellSize,
-                child: Container(
-                  margin: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Center(
-                    child: Text(
-                        '${isJalali ? TimeManager.jalaliDayNumber(date) : date.day}',
-                        style: TimeManager.isSameDay(date, today)
-                            ? TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.primary)
-                            : const TextStyle(fontSize: 16)),
-                  ),
-                ),
-              )));
+              child: _announce(
+                  context,
+                  SizedBox(
+                    width: cellSize,
+                    height: cellSize,
+                    child: Container(
+                      margin: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: CachedText(
+                          _dayLabel,
+                          size: 16,
+                          color: _isToday
+                              ? colorScheme.primary
+                              : colorScheme.onSurface,
+                          fontWeight: _isToday ? FontWeight.bold : null,
+                        ),
+                      ),
+                    ),
+                  ))));
     }
   }
 }

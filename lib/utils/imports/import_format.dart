@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 enum ImportFormat {
   dailyYouJson,
   daybook,
@@ -8,4 +12,6 @@ enum ImportFormat {
   oneShot,
   pixels,
   markdown,
+  dayOne,
+  storyPad,
 }

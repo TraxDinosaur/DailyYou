@@ -1,37 +1,42 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'dart:async';
 
 import 'package:daily_you/database/app_database.dart';
 import 'package:daily_you/database/entry_dao.dart';
-import 'package:daily_you/database/entry_image_dao.dart';
 import 'package:daily_you/database/entry_location_dao.dart';
 import 'package:daily_you/database/entry_song_dao.dart';
 import 'package:daily_you/database/entry_tag_dao.dart';
-import 'package:daily_you/database/image_storage.dart';
 import 'package:daily_you/database/people_dao.dart';
 import 'package:daily_you/database/spaces_dao.dart';
+import 'package:daily_you/database/entry_attachment_dao.dart';
+import 'package:daily_you/database/attachment_storage.dart';
 import 'package:daily_you/models/entry.dart';
-import 'package:daily_you/models/image.dart';
+import 'package:daily_you/models/attachment.dart';
 import 'package:daily_you/models/tag.dart';
-import 'package:daily_you/providers/entry_images_provider.dart';
 import 'package:daily_you/providers/entry_locations_provider.dart';
 import 'package:daily_you/providers/entry_songs_provider.dart';
 import 'package:daily_you/providers/people_provider.dart';
 import 'package:daily_you/providers/spaces_provider.dart';
+import 'package:daily_you/providers/entry_attachments_provider.dart';
 import 'package:daily_you/providers/tags_provider.dart';
 import 'package:daily_you/time_manager.dart';
 import 'package:daily_you/utils/webdav_sync_engine.dart';
 import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
 import 'package:sqflite/sqflite.dart';
 
 class EntryDraft {
   final Entry entry;
   final List<EntryTag> tags;
-  final List<EntryImage> images;
+  final List<EntryAttachment> attachments;
 
   const EntryDraft({
     required this.entry,
     this.tags = const [],
-    this.images = const [],
+    this.attachments = const [],
   });
 }
 
@@ -79,13 +84,15 @@ class EntryDraftSession {
 
 typedef _TagWrite = ({List<EntryTag> tags, bool changed});
 
-typedef _ImageWrite = ({
-  List<EntryImage> images,
-  List<String> removedFiles,
+typedef _AttachmentWrite = ({
+  List<EntryAttachment> attachments,
+  List<EntryAttachment> removed,
   bool changed
 });
 
 class EntryStore with ChangeNotifier {
+  static final Logger _logger = Logger('EntryStore');
+
   static final EntryStore instance = EntryStore._init();
 
   EntryStore._init();
@@ -110,35 +117,51 @@ class EntryStore with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> delete(Entry entry) async {
-    final images = EntryImagesProvider.instance.getForEntry(entry);
+  Future<void> delete(Entry entry) => deleteMany([entry]);
+
+  Future<void> deleteMany(List<Entry> entriesToDelete) async {
+    if (entriesToDelete.isEmpty) return;
+    final entryIds = {for (final entry in entriesToDelete) entry.id!};
+    final attachments = [
+      for (final entry in entriesToDelete)
+        ...EntryAttachmentsProvider.instance.getForEntry(entry)
+    ];
 
     await AppDatabase.instance.database!.transaction((transaction) async {
-      for (final image in images) {
-        await EntryImageDao.remove(image, executor: transaction);
+      for (final attachment in attachments) {
+        await EntryAttachmentDao.remove(attachment, executor: transaction);
       }
-      await EntryTagDao.removeAllForEntry(entry.id!, executor: transaction);
-      await EntrySongDao.removeAllForEntry(entry.id!, executor: transaction);
-      await EntryLocationDao.removeForEntry(entry.id!, executor: transaction);
-      await SpacesDao.removeForEntry(entry.id!, executor: transaction);
-      await PeopleDao.removeForEntry(entry.id!, executor: transaction);
-      await EntryDao.remove(entry.id!, executor: transaction);
+      for (final entryId in entryIds) {
+        await EntryTagDao.removeAllForEntry(entryId, executor: transaction);
+        await EntrySongDao.removeAllForEntry(entryId, executor: transaction);
+        await EntryLocationDao.removeForEntry(entryId, executor: transaction);
+        await SpacesDao.removeForEntry(entryId, executor: transaction);
+        await PeopleDao.removeForEntry(entryId, executor: transaction);
+        await EntryDao.remove(entryId, executor: transaction);
+      }
     });
 
-    await _deleteImageFiles(images.map((image) => image.imgPath));
+    await _deleteAttachmentFiles(attachments);
 
-    _entries = _entries.where((existing) => existing.id != entry.id).toList();
+    _entries =
+        _entries.where((existing) => !entryIds.contains(existing.id)).toList();
     _indexEntriesByDay();
-    TagsProvider.instance.applyEntryTags(entry.id!, const []);
-    EntryImagesProvider.instance.applyForEntry(entry.id!, const []);
-    EntrySongsProvider.instance.removeAllForEntry(entry.id!);
-    EntryLocationsProvider.instance.removeForEntry(entry.id!);
-    SpacesProvider.instance.removeForEntry(entry.id!);
-    PeopleProvider.instance.removeForEntry(entry.id!);
-    await WebDavSyncEngine.recordTombstone(entry.id!);
+    TagsProvider.instance.removeEntryTagsForEntries(entryIds);
+    EntryAttachmentsProvider.instance.removeForEntries(entryIds);
+    for (final entryId in entryIds) {
+      EntrySongsProvider.instance.removeAllForEntry(entryId);
+      EntryLocationsProvider.instance.removeForEntry(entryId);
+      SpacesProvider.instance.removeForEntry(entryId);
+      PeopleProvider.instance.removeForEntry(entryId);
+      await WebDavSyncEngine.recordTombstone(entryId);
+    }
     await AppDatabase.instance.updateExternalDatabase();
     notifyListeners();
   }
+
+  int getEntryDayCount() => _entriesByDay.length;
+  bool hasEntryAtTimestamp(DateTime timestamp) =>
+      entries.any((entry) => entry.timeCreate == timestamp);
 
   Future<Entry> add(Entry entry, {bool skipUpdate = false}) async {
     final entryWithId = await EntryDao.add(entry);
@@ -187,16 +210,10 @@ class EntryStore with ChangeNotifier {
     return _entriesByDay[DateTime(date.year, date.month, date.day)] ?? const [];
   }
 
-  int getEntryDayCount() => _entriesByDay.length;
-
-  bool hasEntryAtTimestamp(DateTime timestamp) {
-    return entries.any((entry) => entry.timeCreate == timestamp);
-  }
-
   Future<Entry> _writeDraft(EntryDraft draft) async {
     late Entry saved;
     late _TagWrite tagWrite;
-    late _ImageWrite imageWrite;
+    late _AttachmentWrite attachmentWrite;
     final entryChanged = _entryNeedsWrite(draft.entry);
 
     await AppDatabase.instance.database!.transaction((transaction) async {
@@ -209,12 +226,15 @@ class EntryStore with ChangeNotifier {
         saved = draft.entry;
       }
       tagWrite = await _writeEntryTags(transaction, saved.id!, draft.tags);
-      imageWrite = await _writeEntryImages(transaction, saved, draft.images);
+      attachmentWrite =
+          await _writeEntryAttachments(transaction, saved, draft.attachments);
     });
 
-    if (!entryChanged && !tagWrite.changed && !imageWrite.changed) return saved;
+    if (!entryChanged && !tagWrite.changed && !attachmentWrite.changed) {
+      return saved;
+    }
 
-    await _deleteImageFiles(imageWrite.removedFiles);
+    await _deleteAttachmentFiles(attachmentWrite.removed);
 
     final index = getIndexOfEntry(saved.id!);
     if (index == -1) {
@@ -226,7 +246,8 @@ class EntryStore with ChangeNotifier {
     _indexEntriesByDay();
 
     TagsProvider.instance.applyEntryTags(saved.id!, tagWrite.tags);
-    EntryImagesProvider.instance.applyForEntry(saved.id!, imageWrite.images);
+    EntryAttachmentsProvider.instance
+        .applyForEntry(saved.id!, attachmentWrite.attachments);
 
     await AppDatabase.instance.updateExternalDatabase();
     notifyListeners();
@@ -297,21 +318,21 @@ class EntryStore with ChangeNotifier {
     return (tags: written, changed: changed);
   }
 
-  Future<_ImageWrite> _writeEntryImages(
-      DatabaseExecutor executor, Entry entry, List<EntryImage> desired) async {
-    final current = EntryImagesProvider.instance.getForEntry(entry);
-    final written = <EntryImage>[];
+  Future<_AttachmentWrite> _writeEntryAttachments(DatabaseExecutor executor,
+      Entry entry, List<EntryAttachment> desired) async {
+    final current = EntryAttachmentsProvider.instance.getForEntry(entry);
+    final written = <EntryAttachment>[];
     var changed = false;
 
-    for (final image in desired) {
-      final wanted = image.copy(entryId: entry.id);
+    for (final attachment in desired) {
+      final wanted = attachment.copy(entryId: entry.id);
       final existing =
           current.where((saved) => saved.id == wanted.id).firstOrNull;
       if (existing == null) {
-        written.add(await EntryImageDao.add(wanted, executor: executor));
+        written.add(await EntryAttachmentDao.add(wanted, executor: executor));
         changed = true;
-      } else if (existing.imgRank != wanted.imgRank) {
-        await EntryImageDao.update(wanted, executor: executor);
+      } else if (existing.rank != wanted.rank) {
+        await EntryAttachmentDao.update(wanted, executor: executor);
         written.add(wanted);
         changed = true;
       } else {
@@ -319,21 +340,31 @@ class EntryStore with ChangeNotifier {
       }
     }
 
-    final desiredIds = desired.map((image) => image.id).nonNulls.toSet();
-    final removedFiles = <String>[];
+    final desiredIds =
+        desired.map((attachment) => attachment.id).nonNulls.toSet();
+    final removed = <EntryAttachment>[];
     for (final existing in current) {
       if (desiredIds.contains(existing.id)) continue;
-      await EntryImageDao.remove(existing, executor: executor);
-      removedFiles.add(existing.imgPath);
+      await EntryAttachmentDao.remove(existing, executor: executor);
+      removed.add(existing);
       changed = true;
     }
 
-    return (images: written, removedFiles: removedFiles, changed: changed);
+    return (attachments: written, removed: removed, changed: changed);
   }
 
-  Future<void> _deleteImageFiles(Iterable<String> names) async {
-    for (final name in names) {
-      await ImageStorage.instance.delete(name);
+  Future<void> _deleteAttachmentFiles(
+      Iterable<EntryAttachment> attachments) async {
+    for (final attachment in attachments) {
+      try {
+        await AttachmentStorage.instance
+            .delete(attachment.filePath, attachment.type);
+      } catch (error, stackTrace) {
+        _logger.warning(
+            'Deleting attachment file ${attachment.filePath} failed',
+            error,
+            stackTrace);
+      }
     }
   }
 

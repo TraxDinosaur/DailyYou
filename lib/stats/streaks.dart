@@ -1,4 +1,9 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'package:daily_you/models/entry.dart';
+import 'package:daily_you/models/mood.dart';
 
 typedef Streaks = ({int current, int longest, int? daysSinceBadDay});
 
@@ -21,7 +26,7 @@ Streaks calculateStreaks(List<Entry> entries, {DateTime? now}) {
   for (final entry in entries) {
     final day = _calendarDay(entry.timeCreate);
 
-    if (daysSinceBadDay == null && entry.mood != null && entry.mood! < 0) {
+    if (daysSinceBadDay == null && Mood.isBadDay(entry.mood)) {
       daysSinceBadDay = today.difference(day).inDays;
     }
 

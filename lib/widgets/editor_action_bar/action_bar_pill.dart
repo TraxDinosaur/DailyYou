@@ -1,3 +1,7 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'dart:ui' show lerpDouble;
 
 import 'package:daily_you/widgets/editor_action_bar/dock_metrics.dart';
@@ -113,22 +117,38 @@ class ToolbarIconButton extends StatelessWidget {
   final double size;
   final Widget icon;
   final VoidCallback? onPressed;
+  final bool selected;
+  final double dockProgress;
 
   const ToolbarIconButton({
     super.key,
     required this.size,
     required this.icon,
     required this.onPressed,
+    this.selected = false,
+    this.dockProgress = 1,
   });
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return SizedBox(
       width: size,
       height: size,
       child: IconButton(
         padding: EdgeInsets.zero,
         visualDensity: VisualDensity.compact,
+        style: IconButton.styleFrom(
+          shape: const CircleBorder(),
+          backgroundColor: selected
+              ? Color.lerp(
+                  colorScheme.primary, colorScheme.secondary, dockProgress)
+              : null,
+          foregroundColor: selected
+              ? Color.lerp(
+                  colorScheme.onPrimary, colorScheme.onSecondary, dockProgress)
+              : null,
+        ),
         icon: icon,
         onPressed: onPressed,
       ),

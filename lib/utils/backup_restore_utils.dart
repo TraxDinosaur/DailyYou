@@ -1,10 +1,15 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'dart:async';
 import 'dart:io';
 
 import 'package:daily_you/config_provider.dart';
 import 'package:daily_you/database/app_database.dart';
-import 'package:daily_you/database/image_storage.dart';
 import 'package:daily_you/database/song_storage.dart';
+import 'package:daily_you/database/attachment_storage.dart';
+import 'package:daily_you/models/attachment.dart';
 import 'package:daily_you/notification_manager.dart';
 import 'package:daily_you/storage/file_store.dart';
 import 'package:daily_you/storage/local_file_store.dart';
@@ -14,6 +19,7 @@ import 'package:daily_you/utils/cancellation_token.dart';
 import 'package:daily_you/utils/operation_outcome.dart';
 import 'package:daily_you/utils/password_store.dart';
 import 'package:daily_you/utils/zip_utils.dart';
+import 'package:daily_you/widgets/app_dialog.dart';
 import 'package:daily_you/widgets/auth_popup.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:daily_you/l10n/generated/app_localizations.dart';
@@ -68,12 +74,16 @@ class BackupRestoreUtils {
       }
 
       onCompress(0);
-      await ZipUtils.compress(stagedArchive.path, [databaseSnapshot.path],
+      await ZipUtils.compress(
+          stagedArchive.path,
+          [databaseSnapshot.path],
           [
-            await ImageStorage.instance.getInternalFolder(),
+            for (final type in AttachmentType.values)
+              await AttachmentStorage.instance.getInternalFolder(type),
             await SongStorage.instance.getInternalFolder(),
           ],
-          onProgress: onCompress, cancellationToken: cancellationToken);
+          onProgress: onCompress,
+          cancellationToken: cancellationToken);
 
       if (cancellationToken?.isCancelled ?? false) {
         throw BackupCancelledException();
@@ -311,7 +321,7 @@ class BackupRestoreUtils {
 
   static Future<String?> _promptForBackupPassword(BuildContext context) async {
     String? password;
-    await showDialog(
+    await showAppDialog(
         context: context,
         builder: (context) => AuthPopup(
               mode: AuthPopupMode.enterPassword,
@@ -354,7 +364,10 @@ class BackupRestoreUtils {
   }
 
   static Future<OperationOutcome> restoreFromZip(
-      BuildContext context, void Function(String) updateStatus) async {
+      BuildContext context, void Function(String) updateStatus,
+      {required VoidCallback onFilePicked,
+      required Future<bool> Function(String fileName, int entryCount)
+          confirm}) async {
     final localizations = AppLocalizations.of(context)!;
     var outcome = const OperationOutcome.succeeded();
     var tempDir = await getTemporaryDirectory();
@@ -369,6 +382,8 @@ class BackupRestoreUtils {
           mimeTypes: ['application/zip', 'application/octet-stream']);
 
       if (archive == null) return const OperationOutcome.cancelled();
+
+      onFilePicked();
 
       // Import archive
       updateStatus(localizations.tranferStatus("0"));
@@ -385,113 +400,12 @@ class BackupRestoreUtils {
         });
       } else {
         if (await tempZipFile.exists()) await tempZipFile.delete();
-        await tempImportFile.copy(tempZipFile.path);
+        await tempImportFile.rename(tempZipFile.path);
       }
 
-      // Restore archive
-      updateStatus(localizations.restoringBackupStatus("0"));
-
-      void reportExtractProgress(double percent) {
-        updateStatus(localizations.restoringBackupStatus("${percent.round()}"));
-      }
-
-      await _extractBackup(tempZipFile, restoreFolder, reportExtractProgress);
-
-      final restoreStore = LocalFileStore(restoreFolder.path);
-      final databaseBytes =
-          await restoreStore.read(AppDatabase.databaseFileName);
-      if (databaseBytes != null) {
-        final extractedDbFile =
-            File(join(restoreFolder.path, AppDatabase.databaseFileName));
-        if (!await AppDatabase.instance.validateDatabase(extractedDbFile.path)) {
-          throw Exception('Restored database failed SQLite integrity check');
-        }
-
-        final internalDbPath = await AppDatabase.instance.getInternalPath();
-        final preRestoreBackupPath = join(tempDir.path,
-            'pre_restore_backup_${DateTime.now().millisecondsSinceEpoch}.db');
-        if (await File(internalDbPath).exists()) {
-          await File(internalDbPath).copy(preRestoreBackupPath);
-        }
-
-        try {
-          // Import database
-          await AppDatabase.instance.close();
-          await AppDatabase.instance.internalStore
-              .write(AppDatabase.databaseFileName, databaseBytes);
-          await AppDatabase.instance.open();
-
-          // Reconcile external database location: ensure cross-app restored databases don't get trapped
-          if (AppDatabase.instance.usingExternalLocation()) {
-            if (await AppDatabase.instance.hasExternalLocationPermission()) {
-              try {
-                await AppDatabase.instance.updateExternalDatabase();
-              } catch (e) {
-                _logger.warning(
-                    'Failed to sync restored database to external storage', e);
-              }
-            } else {
-              _logger.info(
-                  'External database location inaccessible after restore, defaulting to local database');
-              await AppDatabase.instance.resetExternalLocation();
-            }
-          }
-
-          // Import images. These will be garbage collected after import
-          final restoredImages =
-              LocalFileStore(join(restoreFolder.path, "Images"));
-          if (await restoredImages.isAvailable()) {
-            // Also show cleanup status here since images may take awhile
-            updateStatus(localizations.cleanUpStatus);
-            await ImageStorage.instance.whileNotSyncing(() async =>
-                restoreImages(restoredImages,
-                    await ImageStorage.instance.internalStore()));
-            if (ImageStorage.instance.usingExternalLocation()) {
-              if (await ImageStorage.instance.hasExternalLocationPermission()) {
-                try {
-                  await ImageStorage.instance.syncImageFolder(true);
-                } catch (e) {
-                  _logger.warning(
-                      'Failed to sync restored images to external storage', e);
-                }
-              } else {
-                _logger.info(
-                    'External image location inaccessible after restore, defaulting to local image folder');
-                await ImageStorage.instance.resetImageFolderLocation();
-              }
-            }
-            ImageStorage.instance.invalidateCache();
-          }
-
-          final restoredSongs =
-              LocalFileStore(join(restoreFolder.path, "SongCovers"));
-          if (await restoredSongs.isAvailable()) {
-            await restoreImages(
-                restoredSongs, await SongStorage.instance.store());
-          }
-        } catch (restoreError) {
-          _logger.severe(
-              'Failed to apply restored database, rolling back', restoreError);
-          if (await File(preRestoreBackupPath).exists()) {
-            try {
-              await AppDatabase.instance.close();
-              await File(preRestoreBackupPath).copy(internalDbPath);
-              await AppDatabase.instance.open();
-              _logger.info('Successfully rolled back to pre-restore database');
-            } catch (rollbackError) {
-              _logger.severe('Rollback to pre-restore database failed',
-                  rollbackError);
-            }
-          }
-          rethrow;
-        } finally {
-          if (await File(preRestoreBackupPath).exists()) {
-            await File(preRestoreBackupPath).delete();
-          }
-        }
-      } else {
-        outcome = const OperationOutcome.failed();
-      }
+      outcome = await restoreFromArchive(
+          tempZipFile, restoreFolder, localizations, updateStatus,
+          confirm: (entryCount) => confirm(archive.name, entryCount));
     } on _RestoreCancelled {
       outcome = const OperationOutcome.cancelled();
     } catch (error) {
@@ -513,19 +427,105 @@ class BackupRestoreUtils {
     return outcome;
   }
 
-  static Future<void> restoreImages(
-      FileStore backup, FileStore destination) async {
-    for (final imageName in await backup.list()) {
-      final cleanName = basename(imageName);
-      final bytes = await backup.read(imageName);
-      if (bytes != null) await destination.write(cleanName, bytes);
+  @visibleForTesting
+  static Future<OperationOutcome> restoreFromArchive(
+      File archive,
+      Directory restoreFolder,
+      AppLocalizations localizations,
+      void Function(String) updateStatus,
+      {required Future<bool> Function(int entryCount) confirm}) async {
+    updateStatus(localizations.restoringBackupStatus("0"));
+
+    await _extractBackup(archive, restoreFolder, (percent) {
+      updateStatus(localizations.restoringBackupStatus("${percent.round()}"));
+    });
+
+    final restoredDatabase =
+        File(join(restoreFolder.path, AppDatabase.databaseFileName));
+    if (!await restoredDatabase.exists() ||
+        !await AppDatabase.instance.canOpen(restoredDatabase.path)) {
+      return const OperationOutcome.failed();
     }
+    if (!await confirm(
+        await AppDatabase.instance.countEntries(restoredDatabase.path))) {
+      return const OperationOutcome.cancelled();
+    }
+
+    await AppDatabase.instance.replaceDatabase(restoredDatabase);
+    await AppDatabase.instance.updateExternalDatabase();
+
+    final failedFiles = <String>[];
+    for (final type in AttachmentType.values) {
+      final restoredFiles =
+          LocalFileStore(join(restoreFolder.path, type.folderName));
+      if (!await restoredFiles.isAvailable()) continue;
+
+      updateStatus(localizations.cleanUpStatus);
+      failedFiles.addAll(await AttachmentStorage.instance.whileNotSyncing(
+          () async => restoreAttachmentFiles(
+              restoredFiles,
+              LocalFileStore(
+                  await AttachmentStorage.instance.getInternalFolder(type)))));
+    }
+    final restoredSongs = LocalFileStore(join(restoreFolder.path, 'SongCovers'));
+    if (await restoredSongs.isAvailable()) {
+      failedFiles.addAll(await restoreAttachmentFiles(restoredSongs,
+          LocalFileStore(await SongStorage.instance.getInternalFolder())));
+    }
+    await AttachmentStorage.instance.migrateLegacyVideoFiles(restoreFolder: restoreFolder.path);
+    if (AttachmentStorage.instance.usingExternalLocation()) {
+      await AttachmentStorage.instance
+          .syncAttachmentFolders(failedFiles.isEmpty);
+    } else if (failedFiles.isEmpty) {
+      await AttachmentStorage.instance.garbageCollectAttachments();
+    }
+    AttachmentStorage.instance.invalidateCache();
+    if (failedFiles.isEmpty) return const OperationOutcome.succeeded();
+    return OperationOutcome.failed(FileSystemException(
+        'Could not restore ${failedFiles.length} attachment file(s)',
+        failedFiles.join(', ')));
   }
 
-  static void showLoadingStatus(
-      BuildContext context, ValueNotifier<String> statusNotifier) {
-    showDialog(
-      context: context,
+  static Future<List<String>> restoreAttachmentFiles(
+      LocalFileStore backup, LocalFileStore destination) async {
+    final failedFiles = <String>[];
+    for (final fileName in await backup.list()) {
+      try {
+        await destination.writeAtomically(fileName, (temporary) async {
+          await File(join(backup.directoryPath, fileName)).copy(temporary.path);
+          return true;
+        });
+      } catch (error, stackTrace) {
+        _logger.warning('Restoring $fileName failed', error, stackTrace);
+        failedFiles.add(fileName);
+      }
+    }
+    return failedFiles;
+  }
+
+  static Future<T> runWithLoadingStatus<T>(BuildContext context,
+      Future<T> Function(void Function(String status) updateStatus) run) async {
+    final loadingStatus = LoadingStatusDialog(context)..show();
+    try {
+      return await run(loadingStatus.update);
+    } finally {
+      loadingStatus.dispose();
+    }
+  }
+}
+
+class LoadingStatusDialog {
+  LoadingStatusDialog(this._context);
+
+  final BuildContext _context;
+  final ValueNotifier<String> _status = ValueNotifier<String>("");
+  bool _visible = false;
+
+  void show() {
+    if (_visible || !_context.mounted) return;
+    _visible = true;
+    showAppDialog(
+      context: _context,
       barrierDismissible: false,
       builder: (context) {
         return PopScope(
@@ -539,7 +539,7 @@ class BackupRestoreUtils {
                   CircularProgressIndicator(),
                   const SizedBox(height: 20),
                   ValueListenableBuilder<String>(
-                    valueListenable: statusNotifier,
+                    valueListenable: _status,
                     builder: (context, message, child) {
                       return Text(message, textAlign: TextAlign.center);
                     },
@@ -551,5 +551,28 @@ class BackupRestoreUtils {
         );
       },
     );
+  }
+
+  void update(String status) => _status.value = status;
+
+  Future<T> whileHidden<T>(Future<T> Function() task) async {
+    final wasVisible = _visible;
+    _hide();
+    try {
+      return await task();
+    } finally {
+      if (wasVisible) show();
+    }
+  }
+
+  void dispose() {
+    _hide();
+    _status.dispose();
+  }
+
+  void _hide() {
+    if (!_visible || !_context.mounted) return;
+    _visible = false;
+    Navigator.of(_context).pop();
   }
 }

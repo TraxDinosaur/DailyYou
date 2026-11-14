@@ -1,11 +1,19 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'dart:math' as math;
 import 'package:daily_you/config_provider.dart';
 import 'package:daily_you/time_manager.dart';
 import 'package:daily_you/utils/bucket_combiner.dart';
+import 'package:daily_you/utils/chart_axis.dart';
 import 'package:daily_you/utils/chart_y_range.dart';
+import 'package:daily_you/widgets/app_dialog.dart';
 import 'package:daily_you/widgets/connected_button_group.dart';
+import 'package:daily_you/widgets/no_data_overlay.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:daily_you/l10n/generated/app_localizations.dart';
+import 'package:daily_you/utils/secondary_text_style.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -23,10 +31,18 @@ class ValueOverTimeChart extends StatefulWidget {
   final bool hasData;
   final ChartYRange yRange;
   final BucketCombiner combine;
-  final String title;
+  final String? title;
   final LeftTitleBuilder? buildLeftTitle;
   final Color? color;
   final bool anchorAtZero;
+  final bool compact;
+  final double leftAxisWidth;
+
+  static const double _fullLeftAxisWidth = 42;
+  static const double _aspectRatio = 2;
+  static const double _bottomLabelGap = 8;
+  static const double _bottomAxisHeight = 40;
+  static const double _addedBottomAxisHeight = 8;
 
   const ValueOverTimeChart({
     super.key,
@@ -34,11 +50,25 @@ class ValueOverTimeChart extends StatefulWidget {
     required this.hasData,
     required this.yRange,
     required this.combine,
-    required this.title,
+    required String this.title,
     this.buildLeftTitle,
     this.color,
     this.anchorAtZero = false,
-  });
+  })  : compact = false,
+        leftAxisWidth = _fullLeftAxisWidth;
+
+  const ValueOverTimeChart.compact({
+    super.key,
+    required this.dataPoints,
+    required this.hasData,
+    required this.yRange,
+    required this.combine,
+    required this.leftAxisWidth,
+    this.buildLeftTitle,
+    this.color,
+  })  : title = null,
+        anchorAtZero = false,
+        compact = true;
 
   @override
   State<ValueOverTimeChart> createState() => _ValueOverTimeChartState();
@@ -180,15 +210,16 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
     final rangeStart =
         widget.hasData ? _dataRangeStart() : _dummyRangeStart(today, isJalali);
 
-    final totalDays = rangeEnd.difference(rangeStart).inDays.toDouble();
+    final totalDays = calendarDaysBetween(rangeStart, rangeEnd).toDouble();
     final spanDays = totalDays.toInt().clamp(1, 999999);
+    final xUnit = axisUnitInDays(totalDays);
     final available = _availableGroupings(spanDays);
     final effective = _effectiveGrouping(spanDays);
     final smoothing = _smoothing;
 
     final buckets = switch (effective) {
-      ChartGrouping.day => _generateDailyBuckets(rangeStart, rangeEnd),
-      ChartGrouping.week => _generateWeeklyBuckets(rangeStart, rangeEnd),
+      ChartGrouping.day => dayStepBuckets(rangeStart, rangeEnd, 1),
+      ChartGrouping.week => dayStepBuckets(rangeStart, rangeEnd, 7),
       ChartGrouping.month =>
         _generateMonthlyBuckets(rangeStart, rangeEnd, isJalali: isJalali),
       ChartGrouping.year =>
@@ -198,23 +229,28 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
     if (buckets.isEmpty) return const SizedBox.shrink();
 
     final spots = widget.hasData
-        ? _computeSpots(buckets, rangeStart)
-        : _dummySpots(buckets, rangeStart);
+        ? _computeSpots(buckets, rangeStart, xUnit)
+        : _dummySpots(buckets, rangeStart, xUnit);
 
     final yRange = widget.hasData
         ? widget.yRange.resolve(spots.whereType<FlSpot>().map((spot) => spot.y))
         : widget.yRange.previewRange;
 
-    final markerDates =
-        _computeMarkerDates(rangeStart, rangeEnd, spanDays, isJalali);
-    final labelDates = _computeLabelDates(markerDates, spanDays, isJalali);
+    final yearCount = _calendarYear(rangeEnd, isJalali) -
+        _calendarYear(rangeStart, isJalali) +
+        1;
+    final markerDates = _computeMarkerDates(
+        rangeStart, rangeEnd, spanDays, yearCount, isJalali);
+    final labelDates =
+        _computeLabelDates(markerDates, spanDays, yearCount, isJalali);
 
     final labelTextMap = <int, String>{
       for (final d in labelDates)
-        d.difference(rangeStart).inDays: _formatLabel(d, spanDays, context),
+        (calendarDaysBetween(rangeStart, d) / xUnit).round():
+            _formatLabel(d, spanDays, context),
     };
     final markerDayOffsets = markerDates
-        .map((d) => d.difference(rangeStart).inDays.toDouble())
+        .map((d) => calendarDaysBetween(rangeStart, d) / xUnit)
         .toList();
 
     final color = widget.color ?? Theme.of(context).colorScheme.primary;
@@ -222,17 +258,27 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
         Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2);
 
     final labelCount = labelDates.length.clamp(1, 6);
+    final rightInset = widget.compact ? 0.0 : widget.leftAxisWidth;
     final chartWidget = LayoutBuilder(
       builder: (context, constraints) {
-        final maxLabelWidth = ((constraints.maxWidth - 84) / labelCount);
+        final maxLabelWidth =
+            ((constraints.maxWidth - widget.leftAxisWidth - rightInset) /
+                labelCount);
+        final chartWidth = constraints.maxWidth - rightInset;
         return Padding(
-          padding: const EdgeInsets.only(right: 42, top: 8, bottom: 8),
+          padding: EdgeInsets.only(
+            right: rightInset,
+            top: 8,
+            bottom: 8,
+          ),
           child: AspectRatio(
-            aspectRatio: 2,
+            aspectRatio: chartWidth /
+                (chartWidth / ValueOverTimeChart._aspectRatio +
+                    ValueOverTimeChart._addedBottomAxisHeight),
             child: LineChart(
               LineChartData(
                 minX: 0,
-                maxX: totalDays,
+                maxX: totalDays / xUnit,
                 minY: yRange.minY,
                 maxY: yRange.maxY,
                 clipData: const FlClipData.all(),
@@ -257,18 +303,21 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
                     sideTitles: SideTitles(
                       showTitles: true,
                       interval: 1,
-                      reservedSize: 32,
+                      reservedSize: ValueOverTimeChart._bottomAxisHeight,
                       getTitlesWidget: (value, _) {
                         final label = labelTextMap[value.toInt()];
                         if (label != null) {
                           return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
+                            padding: const EdgeInsets.only(
+                              top: ValueOverTimeChart._bottomLabelGap,
+                            ),
                             child: SizedBox(
                               width: maxLabelWidth,
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: Text(
                                   label,
+                                  style: secondaryTextStyle(context),
                                   textScaler: TextScaler.noScaling,
                                 ),
                               ),
@@ -283,7 +332,7 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
                     sideTitles: SideTitles(
                       showTitles: true,
                       interval: yRange.interval,
-                      reservedSize: 42,
+                      reservedSize: widget.leftAxisWidth,
                       getTitlesWidget: (value, meta) =>
                           widget.buildLeftTitle != null
                               ? widget.buildLeftTitle!(value, meta)
@@ -314,6 +363,12 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
       },
     );
 
+    final plot = NoDataOverlay(
+      hasData: widget.hasData,
+      child: Center(child: chartWidget),
+    );
+    if (widget.compact) return plot;
+
     return Card.filled(
       color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: Column(
@@ -325,12 +380,11 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
               children: [
                 const SizedBox(width: 48),
                 Expanded(
-                  child: Center(
-                    child: Text(
-                      widget.title,
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
+                  child: Text(
+                    widget.title!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
                 IconButton(
@@ -343,24 +397,7 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
               ],
             ),
           ),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Opacity(
-                opacity: widget.hasData ? 1.0 : 0.3,
-                child: Center(child: chartWidget),
-              ),
-              if (!widget.hasData)
-                Text(
-                  AppLocalizations.of(context)!.statisticsNotEnoughData,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).disabledColor,
-                  ),
-                ),
-            ],
-          ),
+          plot,
         ],
       ),
     );
@@ -372,7 +409,7 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
       meta: meta,
       child: Text(
         formatted,
-        style: const TextStyle(fontSize: 11),
+        style: secondaryTextStyle(context, fontSize: 11),
         textAlign: TextAlign.right,
       ),
     );
@@ -393,13 +430,13 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
   void _showGroupingDialog(BuildContext context, List<ChartGrouping> available,
       ChartGrouping effective) {
     var selected = effective;
-    showDialog(
+    showAppDialog(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
           final l10n = AppLocalizations.of(context)!;
           final smoothingValue = _smoothing;
-          final screenWidth = MediaQuery.of(context).size.width;
+          final screenWidth = MediaQuery.sizeOf(context).width;
           final dialogWidth = (screenWidth - 80).clamp(240.0, 360.0);
           return Dialog(
             child: SizedBox(
@@ -480,26 +517,6 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
     return DateTime(today.year, today.month - 12, today.day);
   }
 
-  List<DateTime> _generateDailyBuckets(DateTime start, DateTime end) {
-    final buckets = <DateTime>[];
-    DateTime current = DateTime(start.year, start.month, start.day);
-    while (!current.isAfter(end)) {
-      buckets.add(current);
-      current = current.add(const Duration(days: 1));
-    }
-    return buckets;
-  }
-
-  List<DateTime> _generateWeeklyBuckets(DateTime start, DateTime end) {
-    final buckets = <DateTime>[];
-    DateTime current = DateTime(start.year, start.month, start.day);
-    while (!current.isAfter(end)) {
-      buckets.add(current);
-      current = current.add(const Duration(days: 7));
-    }
-    return buckets;
-  }
-
   List<DateTime> _generateMonthlyBuckets(DateTime start, DateTime end,
       {bool isJalali = false}) {
     final buckets = <DateTime>[];
@@ -545,30 +562,26 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
     return buckets;
   }
 
-  List<FlSpot?> _computeSpots(List<DateTime> buckets, DateTime rangeStart) {
+  List<FlSpot?> _computeSpots(
+      List<DateTime> buckets, DateTime rangeStart, double xUnit) {
     final Map<int, List<double>> bucketValues = {};
     for (final point in widget.dataPoints) {
-      int bucketIndex = -1;
-      for (int i = buckets.length - 1; i >= 0; i--) {
-        if (!buckets[i].isAfter(point.date)) {
-          bucketIndex = i;
-          break;
-        }
-      }
+      final bucketIndex = bucketIndexAtOrBefore(buckets, point.date);
       if (bucketIndex < 0) continue;
       (bucketValues[bucketIndex] ??= []).add(point.value);
     }
     return List.generate(buckets.length, (i) {
       final values = bucketValues[i];
       if (values == null || values.isEmpty) return null;
-      final x = buckets[i].difference(rangeStart).inDays.toDouble();
+      final x = calendarDaysBetween(rangeStart, buckets[i]) / xUnit;
       return FlSpot(x, widget.combine(values));
     });
   }
 
-  List<FlSpot?> _dummySpots(List<DateTime> buckets, DateTime rangeStart) {
+  List<FlSpot?> _dummySpots(
+      List<DateTime> buckets, DateTime rangeStart, double xUnit) {
     return List.generate(buckets.length, (i) {
-      final x = buckets[i].difference(rangeStart).inDays.toDouble();
+      final x = calendarDaysBetween(rangeStart, buckets[i]) / xUnit;
       return FlSpot(x, _scaleDummy(_dummyYValues[i % _dummyYValues.length]));
     });
   }
@@ -666,15 +679,11 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
     );
   }
 
-  List<DateTime> _computeMarkerDates(
-      DateTime rangeStart, DateTime rangeEnd, int spanDays, bool isJalali) {
+  List<DateTime> _computeMarkerDates(DateTime rangeStart, DateTime rangeEnd,
+      int spanDays, int yearCount, bool isJalali) {
     final markers = <DateTime>[];
     if (spanDays <= _monthThreshold) {
-      DateTime current = rangeStart;
-      while (!current.isAfter(rangeEnd)) {
-        markers.add(current);
-        current = current.add(const Duration(days: 7));
-      }
+      markers.addAll(dayStepBuckets(rangeStart, rangeEnd, 7));
     } else if (spanDays <= _yearThreshold) {
       if (isJalali) {
         final jStart = Jalali.fromDateTime(rangeStart);
@@ -697,24 +706,19 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
         }
       }
     } else {
-      if (isJalali) {
-        final jStart = Jalali.fromDateTime(rangeStart);
-        final jEnd = Jalali.fromDateTime(rangeEnd);
-        for (int year = jStart.year; year <= jEnd.year + 1; year++) {
-          for (final month in [1, 4, 7, 10]) {
-            final dt = Jalali(year, month, 1).toDateTime();
-            if (!dt.isBefore(rangeStart) && !dt.isAfter(rangeEnd)) {
-              markers.add(dt);
-            }
-          }
-        }
-      } else {
-        for (int year = rangeStart.year; year <= rangeEnd.year + 1; year++) {
-          for (final month in [1, 4, 7, 10]) {
-            final d = DateTime(year, month, 1);
-            if (!d.isBefore(rangeStart) && !d.isAfter(rangeEnd)) {
-              markers.add(d);
-            }
+      final months = markerMonths(yearCount);
+      final yearStep = markerYearStep(yearCount);
+      final lastYear = _calendarYear(rangeEnd, isJalali);
+      for (int year = _calendarYear(rangeStart, isJalali);
+          year <= lastYear + 1;
+          year++) {
+        if (year % yearStep != 0) continue;
+        for (final month in months) {
+          final date = isJalali
+              ? Jalali(year, month, 1).toDateTime()
+              : DateTime(year, month, 1);
+          if (!date.isBefore(rangeStart) && !date.isAfter(rangeEnd)) {
+            markers.add(date);
           }
         }
       }
@@ -722,15 +726,18 @@ class _ValueOverTimeChartState extends State<ValueOverTimeChart> {
     return markers;
   }
 
+  int _calendarYear(DateTime date, bool isJalali) =>
+      isJalali ? Jalali.fromDateTime(date).year : date.year;
+
   List<DateTime> _computeLabelDates(
-      List<DateTime> markerDates, int spanDays, bool isJalali) {
+      List<DateTime> markerDates, int spanDays, int yearCount, bool isJalali) {
     if (spanDays > 3 * _yearThreshold) {
-      if (isJalali) {
-        return markerDates
-            .where((d) => Jalali.fromDateTime(d).month == 1)
-            .toList();
-      }
-      return markerDates.where((d) => d.month == 1).toList();
+      final yearStep = axisYearStep(yearCount);
+      return markerDates
+          .where((d) =>
+              (isJalali ? Jalali.fromDateTime(d).month : d.month) == 1 &&
+              _calendarYear(d, isJalali) % yearStep == 0)
+          .toList();
     }
     if (markerDates.length <= 6) return List.from(markerDates);
     final result = <DateTime>[];

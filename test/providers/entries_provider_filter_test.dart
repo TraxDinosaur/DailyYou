@@ -1,4 +1,5 @@
 // Behavior based on DenserMeerkat/June (GPL-3.0)
+import 'dart:async';
 import 'package:daily_you/database/entry_store.dart';
 import 'package:daily_you/models/entry.dart';
 import 'package:daily_you/models/tag.dart';
@@ -14,15 +15,35 @@ void main() {
       provider.clearFilters();
     });
 
-    test('filters entries by search text', () {
+    test('filters entries by search text', () async {
       final now = DateTime.now();
       EntryStore.instance.entries = [
-        Entry(id: 1, text: 'Went to the grocery store', timeCreate: now, timeModified: now),
-        Entry(id: 2, text: 'Coding Flutter all day', timeCreate: now, timeModified: now),
-        Entry(id: 3, text: 'Read a great book', timeCreate: now, timeModified: now),
+        Entry(
+            id: 1,
+            text: 'Went to the grocery store',
+            timeCreate: now,
+            timeModified: now),
+        Entry(
+            id: 2,
+            text: 'Coding Flutter all day',
+            timeCreate: now,
+            timeModified: now),
+        Entry(
+            id: 3,
+            text: 'Read a great book',
+            timeCreate: now,
+            timeModified: now),
       ];
 
       provider.searchText = 'flutter';
+      final updated = Completer<void>();
+      void listener() {
+        if (!updated.isCompleted) updated.complete();
+      }
+
+      provider.addListener(listener);
+      await updated.future.timeout(const Duration(seconds: 5));
+      provider.removeListener(listener);
       final filtered = provider.getFilteredEntries();
       expect(filtered.length, 1);
       expect(filtered.first.id, 2);
@@ -55,7 +76,8 @@ void main() {
       EntryStore.instance.entries = [
         Entry(id: 1, text: 'Work note', timeCreate: now, timeModified: now),
         Entry(id: 2, text: 'Personal note', timeCreate: now, timeModified: now),
-        Entry(id: 3, text: 'Un-tagged note', timeCreate: now, timeModified: now),
+        Entry(
+            id: 3, text: 'Un-tagged note', timeCreate: now, timeModified: now),
       ];
 
       TagsProvider.instance.applyEntryTags(1, [

@@ -15,10 +15,25 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dailyReminderTitle => 'Heute eintragen!';
 
   @override
-  String get dailyReminderDescription => 'Mache deinen Eintrag …';
+  String get dailyReminderDescription => 'Mache deinen täglichen Eintrag…';
 
   @override
   String get actionTakePhoto => 'Foto machen';
+
+  @override
+  String get actionTakeVideo => 'Video aufnehmen';
+
+  @override
+  String get actionRecordAudio => 'Audio aufnehmen';
+
+  @override
+  String get actionAddImage => 'Bild hinzufügen';
+
+  @override
+  String get actionAddVideo => 'Video hinzufügen';
+
+  @override
+  String get actionAddAudio => 'Audio hinzufügen';
 
   @override
   String get actionToday => 'Heute';
@@ -33,13 +48,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get jumpToMonthTitle => 'Springe zu Monat';
 
   @override
-  String get jumpToLogTitle => 'Wechsle zum Log';
+  String get jumpToLogTitle => 'Wechsle zum Eintrag';
 
   @override
   String get flashbacksTitle => 'Rückblicke';
 
   @override
-  String get settingsFlashbacksExcludeBadDays => 'Schließe schlechte Tage aus';
+  String get settingsFlashbacksExcludeBadDays => 'Schlechte Tage ausschließen';
 
   @override
   String get flaskbacksEmpty => 'Bis jetzt keine Rückblicke…';
@@ -48,7 +63,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get flashbackGoodDay => 'Ein guter Tag';
 
   @override
-  String get flashbackRandomDay => 'Ein zufälliger Tag';
+  String get flashbackRandomDay => 'Zufälliger Tag';
 
   @override
   String flashbackWeek(num count) {
@@ -174,6 +189,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String chartInfluencesTitle(Object tag) {
+    return 'Influences $tag';
+  }
+
+  @override
   String get chartGroupingLabel => 'Gruppieren nach';
 
   @override
@@ -232,6 +252,108 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String streakDayLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Day Streak',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsLogsLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Logs',
+      one: 'Log',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsWordsLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Words',
+      one: 'Word',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsDaysLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Days',
+      one: 'Day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statsLongestStreakTitle => 'Longest Streak';
+
+  @override
+  String get statsWritingTitle => 'Writing';
+
+  @override
+  String get statsWordsPerLogTitle => 'Words per Log';
+
+  @override
+  String get statsLongestLogTitle => 'Longest Log';
+
+  @override
+  String statsMostActiveTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Most Active Days',
+      one: 'Most Active Day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsDaysOfRange(int written, int total) {
+    final intl.NumberFormat writtenNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String writtenString = writtenNumberFormat.format(written);
+    final intl.NumberFormat totalNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String totalString = totalNumberFormat.format(total);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$totalString Days',
+      one: '$totalString Day',
+    );
+    return '$writtenString of $_temp0';
+  }
+
+  @override
+  String get statsAverageTitle => 'Average';
+
+  @override
+  String get statsHighestTitle => 'Highest';
+
+  @override
+  String get statsLowestTitle => 'Lowest';
+
+  @override
+  String get statsDaysLoggedTitle => 'Days Logged';
+
+  @override
+  String get statsOfDaysLabel => 'of Days';
+
+  @override
+  String get statsCustomizeTitle => 'Customize';
+
+  @override
   String get errorExternalStorageAccessTitle =>
       'Kann nicht auf externen Speicher zugreifen';
 
@@ -244,9 +366,6 @@ class AppLocalizationsDe extends AppLocalizations {
       'Weiter mit lokaler Datenbank';
 
   @override
-  String get errorExternalStorageChooseLocation => 'Choose Another Location';
-
-  @override
   String get databaseMigrationErrorTitle => 'Konnte Daten nicht verschieben';
 
   @override
@@ -255,6 +374,13 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get databaseMigrationErrorRetry => 'Erneut versuchen';
+
+  @override
+  String get databaseNewerErrorTitle => 'Aktualisierung benötigt';
+
+  @override
+  String get databaseNewerErrorDescription =>
+      'Deine Daten wurden in einer neueren Version von Daily You gespeichert. Diese Version kann sie nicht sicher öffnen. Aktualisiere die App, um fortzufahren.';
 
   @override
   String get errorReport => 'Problem melden';
@@ -279,6 +405,23 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get deletePhotoDescription => 'Möchtest du das Foto löschen?';
+
+  @override
+  String get deleteAttachmentTitle => 'Anhang löschen';
+
+  @override
+  String get deleteAttachmentDescription =>
+      'Möchtest du diesen Anhang löschen?';
+
+  @override
+  String get largeAttachmentWarningTitle => 'Großer Anhang';
+
+  @override
+  String get largeAttachmentWarningDescription =>
+      'Dieser Anhang ist groß und wird deine Backup vergößern.';
+
+  @override
+  String get dontShowAgain => 'Nicht erneut anzeigen';
 
   @override
   String get pageSettingsTitle => 'Einstellungen';
@@ -326,10 +469,25 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsShowFlashbacks => 'Zeige Rückblicke';
 
   @override
-  String get settingsChangeMoodIcons => 'Stimmung-Symbole ändern';
+  String get settingsChangeMoodIcons => 'Stimmungssymbole ändern';
 
   @override
   String get moodIconPrompt => 'Symbol hier eingeben';
+
+  @override
+  String get moodVeryUnpleasant => 'Very Unpleasant';
+
+  @override
+  String get moodUnpleasant => 'Unpleasant';
+
+  @override
+  String get moodNeutral => 'Neutral';
+
+  @override
+  String get moodPleasant => 'Pleasant';
+
+  @override
+  String get moodVeryPleasant => 'Very Pleasant';
 
   @override
   String get settingsFlashbacksViewLayout => 'Layout der Rückblicksansicht';
@@ -572,6 +730,99 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noTagsFilterLabel => 'Keine Schlagwörter';
 
   @override
+  String get clearFilter => 'Clear';
+
+  @override
+  String showLogsCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Show $count logs',
+      one: 'Show $count log',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get filterPillAttachments => 'Attachments';
+
+  @override
+  String get filterPillKeywords => 'Keywords';
+
+  @override
+  String get noMoodFilterLabel => 'No Mood';
+
+  @override
+  String get noAttachmentsFilterLabel => 'No Attachments';
+
+  @override
+  String get noTextFilterLabel => 'No Text';
+
+  @override
+  String partialMatchCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count partial matches',
+      one: '$count partial match',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String tagCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tags',
+      one: '$count tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dateFilterLastMonths(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Last $count months',
+      one: 'Last month',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dateFilterCustomRange => 'Custom range';
+
+  @override
+  String get keywordFilterHint => 'Add a keyword…';
+
+  @override
+  String get keywordFilterMatchAll => 'All keywords';
+
+  @override
+  String get keywordFilterMatchAny => 'Any keyword';
+
+  @override
+  String get keywordFilterMatchCase => 'Match case';
+
+  @override
+  String keywordCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count keywords',
+      one: '$count keyword',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dateFilterRange(String start, String end) {
+    return '$start – $end';
+  }
+
+  @override
   String get addTagsTitle => 'Schlagwörter hinzufügen';
 
   @override
@@ -588,6 +839,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get tagEnergyName => 'Energie';
+
+  @override
+  String get tagCategoryPeopleName => 'People';
 
   @override
   String get tagCategoryActivitiesName => 'Aktivitäten';
@@ -636,10 +890,13 @@ class AppLocalizationsDe extends AppLocalizations {
       '## Willkommen bei Daily You\n\n> Jeder Tag ist es wert, in Erinnerung zu bleiben – halte ihn fest!\n\n**Daily You** ist kostenlos, [Open Source](https://github.com/TraxDinosaur/DailyYou) und wird von der Community unterstützt. Die App basiert auf der Überzeugung, dass dein Tagebuch dir gehören und kein Produkt sein sollte:\n\n- Keine Werbung\n- Keine gesperrten Funktionen\n- Kein Tracking und keine Datenerfassung\n\nEgal, ob du Tagebuch schreibst, nachdenkst oder einfach nur festhältst, was dich zum Lächeln gebracht hat: **Daily You** bietet dir einen privaten Raum, der _wirklich ganz dir gehört_.';
 
   @override
-  String get settingsStorageTitle => 'Speicher';
+  String get settingsStorageTitle => 'Speicher & Synchronisation';
 
   @override
   String get settingsImageQuality => 'Bildqualität';
+
+  @override
+  String get settingsMediaQualityTitle => 'Medien-Qualität';
 
   @override
   String get imageQualityHigh => 'Hoch';
@@ -654,17 +911,26 @@ class AppLocalizationsDe extends AppLocalizations {
   String get imageQualityNoCompression => 'Keine Komprimierung';
 
   @override
+  String get settingsStorageUsage => 'Speichernutzung';
+
+  @override
   String get settingsLogFolder => 'Einträge Ordner';
 
   @override
   String get settingsImageFolder => 'Bild Ordner';
 
   @override
+  String get settingsExternalSyncTitle => 'Nach Extern synchronisieren';
+
+  @override
+  String get chooseFolderHint => 'Ordner auswählen';
+
+  @override
   String get warningTitle => 'Achtung';
 
   @override
   String get logFolderWarningDescription =>
-      'Wenn der ausgewählte Ordner bereits eine \'daily_you.db\'-Datei enthält, wird diese verwendet, um Ihre bestehenden Einträge zu überschreiben!';
+      'Der ausgewählte Ordner enthält bereits eine \'daily_you.db\'-Datei, diese wird verwendet, um Ihre bestehenden Einträge zu überschreiben!';
 
   @override
   String get errorTitle => 'Fehler';
@@ -676,6 +942,9 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get imageFolderErrorDescription =>
       'Bilderordneränderung fehlgeschlagen!';
+
+  @override
+  String get syncErrorDescription => 'Fehler beim synchronisieren mit Extern!';
 
   @override
   String get backupErrorDescription => 'Sicherung Fehlgeschlagen!';
@@ -698,60 +967,61 @@ class AppLocalizationsDe extends AppLocalizations {
       'Wiederherstellung einer Sicherung überschreibt vorhandene Daten!';
 
   @override
-  String get settingsBackupPasswordProtect => 'Password Protect Backups';
+  String get settingsBackupPasswordProtect => 'Passwort geschützte Backups';
 
   @override
-  String get backupEncryptedTitle => 'Encrypted Backup';
+  String get backupEncryptedTitle => 'Verschlüsseltes Backup';
 
   @override
-  String get backupEncryptedContent => 'This backup is password protected.';
+  String get backupEncryptedContent => 'Dieses Passwort ist passwortgeschützt.';
 
   @override
-  String get settingsAutoBackup => 'Automatic Backups';
+  String get settingsAutoBackup => 'Automatische Backups';
 
   @override
-  String get settingsAutoBackupLocation => 'Backup Location';
+  String get settingsAutoBackupLocation => 'Speicherort des Backups';
 
   @override
   String get settingsAutoBackupInterval => 'Backup Interval';
 
   @override
-  String get settingsAutoBackupIntervalDaily => 'Daily';
+  String get settingsAutoBackupIntervalDaily => 'Täglich';
 
   @override
-  String get settingsAutoBackupIntervalWeekly => 'Weekly';
+  String get settingsAutoBackupIntervalWeekly => 'Wöchentlich';
 
   @override
-  String get settingsAutoBackupIntervalMonthly => 'Monthly';
+  String get settingsAutoBackupIntervalMonthly => 'Monatlich';
 
   @override
-  String get settingsAutoBackupMaxCount => 'Backups To Keep';
+  String get settingsAutoBackupMaxCount => 'Anzahl vorgehaltener Backups';
 
   @override
-  String get settingsAutoBackupRequireCharging => 'Only While Charging';
+  String get settingsAutoBackupRequireCharging =>
+      'Nur während des Ladevorgangs';
 
   @override
   String settingsBackupLast(Object time) {
-    return 'Last backup $time';
+    return 'Letztes Backup $time';
   }
 
   @override
-  String get settingsBackupNever => 'Never backed up';
+  String get settingsBackupNever => 'noch kein Backup erstellt';
 
   @override
   String settingsAutoBackupNext(Object time) {
-    return 'Next backup $time';
+    return 'Nächstes Backup: $time';
   }
 
   @override
-  String get settingsAutoBackupKeepAll => 'All';
+  String get settingsAutoBackupKeepAll => 'Alles';
 
   @override
-  String get autoBackupFailedTitle => 'Backup Failed';
+  String get autoBackupFailedTitle => 'Backup gescheitert';
 
   @override
   String tranferStatus(Object percent) {
-    return 'Übertragen... $percent%';
+    return 'Übertragen ... $percent%';
   }
 
   @override
@@ -761,17 +1031,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String restoringBackupStatus(Object percent) {
-    return 'Stelle Sicherung wieder her... $percent%';
+    return 'Stelle Sicherung wieder her ... $percent%';
   }
 
   @override
   String encryptingBackupStatus(Object percent) {
-    return 'Encrypting Backup… $percent%';
+    return 'Backup wird verschlüsselt ...$percent%';
   }
 
   @override
   String decryptingBackupStatus(Object percent) {
-    return 'Decrypting Backup… $percent%';
+    return 'Backup wird entschlüsselt ...$percent%';
   }
 
   @override
@@ -797,6 +1067,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get exportImages => 'Bilder Exportieren';
+
+  @override
+  String get exportIncludeTitle => 'Titel einschließen';
 
   @override
   String get settingsImport => 'Importieren';
@@ -850,6 +1123,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get formatMarkdown => 'Markdown';
+
+  @override
+  String get formatCsv => 'CSV';
+
+  @override
+  String get formatJson => 'JSON';
 
   @override
   String get settingsDeleteAllLogsTitle => 'Alle Einträge löschen';
@@ -928,7 +1207,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settingsSourceCode => 'Quellcode';
 
   @override
-  String get settingsOpenSourceLicenses => 'Open Source Licenses';
+  String get settingsOpenSourceLicenses => 'Open Source Lizenzen';
 
   @override
   String get settingsMadeWithLove => 'Mit ❤️ gemacht';
@@ -938,6 +1217,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get imagesTitle => 'Bilder';
+
+  @override
+  String get audioTitle => 'Audio';
+
+  @override
+  String get videoTitle => 'Video';
 
   @override
   String get tagMoodTitle => 'Stimmung';
@@ -963,7 +1248,105 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get shareAddToLogPickerTitle => 'Choose a log';
+  String get shareAddToLogPickerTitle => 'Eintrag auswählen';
+
+  @override
+  String get attachmentAddErrorDescription =>
+      'Fehler beim Hinzufügen des Anhangs!';
+
+  @override
+  String get attachmentLoadFailed => 'Der Anhang konnte nicht geöffnet werden';
+
+  @override
+  String get attachmentNoAppToOpen =>
+      'Keine App gefunden, um diesen Anhang zu öffnen';
+
+  @override
+  String get recorderDiscardTitle => 'Aufnahme verwerfen?';
+
+  @override
+  String get recorderDiscardDescription => 'Die Beschreibung wird verworfen.';
+
+  @override
+  String get recorderDiscardAction => 'Verwerfen';
+
+  @override
+  String get recorderPermissionDenied =>
+      'Mikrophon-Berechtgung benötigt, um Audio aufzunehmen';
+
+  @override
+  String get recorderErrorDescription => 'Fehler beim Aufnehmen des Audios!';
+
+  @override
+  String get gallerySelectAll => 'Select all';
+
+  @override
+  String get gallerySelectAction => 'Select';
+
+  @override
+  String get galleryOpenAction => 'Open';
+
+  @override
+  String deleteLogsMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Delete $count logs? Their attachments are removed with them.',
+      one: 'Delete $count log? Its attachments are removed with it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get newLogAction => 'New Log';
+
+  @override
+  String get removeTagsTitle => 'Remove Tags';
+
+  @override
+  String get applyButtonLabel => 'Apply';
+
+  @override
+  String addTagsConfirmMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Add the chosen tags to $count logs?',
+      one: 'Add the chosen tags to $count log?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String removeTagsConfirmMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Remove the chosen tags from $count logs?',
+      one: 'Remove the chosen tags from $count log?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String selectPartialMatchesMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Also select $count partial matches?',
+      one: 'Also select $count partial match?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get selectExactMatchesOnly => 'Exact only';
+
+  @override
+  String get selectIncludingPartialMatches => 'Include';
+
+  @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
 
   @override
   String get settingsAllowNetworkTitle => 'Allow network access';
@@ -1072,4 +1455,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsAppFont => 'Font style';
+
+  @override
+  String get settingsExportPreferences => 'Export app settings';
+
+  @override
+  String get settingsRestorePreferences => 'Restore app settings';
+
+  @override
+  String get settingsRestorePreferencesConfirm =>
+      'Restore appearance and editor preferences? Your journal and security settings stay unchanged.';
+
+  @override
+  String get chooseMoodEmoji => 'Choose emoji';
 }

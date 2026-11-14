@@ -324,7 +324,7 @@ groups:
         icon: outdoor_grill_rounded
 
   - id: home
-    l10nKey: pageHomeTitle
+    l10nKey: iconGroupHome
     icons:
       - key: home
         icon: home_rounded
@@ -436,6 +436,8 @@ groups:
   - id: symbols
     l10nKey: iconGroupSymbols
     icons:
+      - key: circle
+        icon: circle_rounded
       - key: star
         icon: star_rounded
       - key: bolt

@@ -1,21 +1,29 @@
-import 'dart:io';
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
 
-import 'package:daily_you/config_provider.dart';
-import 'package:daily_you/database/image_storage.dart';
-import 'package:daily_you/l10n/generated/app_localizations.dart';
-import 'package:daily_you/models/image.dart';
-import 'package:daily_you/pages/edit_entry_page.dart';
-import 'package:daily_you/pages/image_view_page.dart';
-import 'package:daily_you/providers/entries_provider.dart';
-import 'package:daily_you/providers/entry_images_provider.dart';
-import 'package:daily_you/providers/entry_locations_provider.dart';
-import 'package:daily_you/providers/entry_songs_provider.dart';
 import 'package:daily_you/providers/people_provider.dart';
 import 'package:daily_you/providers/spaces_provider.dart';
-import 'package:daily_you/time_manager.dart';
 import 'package:daily_you/utils/markdown_io_helper.dart';
-import 'package:daily_you/widgets/local_image_loader.dart';
+import 'dart:io';
+
+import 'package:daily_you/database/attachment_storage.dart';
+import 'package:daily_you/l10n/generated/app_localizations.dart';
+import 'package:daily_you/models/attachment.dart';
+import 'package:daily_you/pages/edit_entry_page.dart';
+import 'package:daily_you/pages/attachment_view_page.dart';
+import 'package:daily_you/providers/entries_provider.dart';
+import 'package:daily_you/providers/entry_locations_provider.dart';
+import 'package:daily_you/providers/entry_songs_provider.dart';
+import 'package:daily_you/time_manager.dart';
 import 'package:daily_you/widgets/location_map_preview_widget.dart';
+import 'package:daily_you/providers/entry_attachments_provider.dart';
+import 'package:daily_you/providers/mood_scale_provider.dart';
+import 'package:daily_you/utils/attachment_mime.dart';
+import 'package:daily_you/widgets/attachment_tile_background.dart';
+import 'package:daily_you/widgets/content_width_limit.dart';
+import 'package:daily_you/widgets/entry_date_time_labels.dart';
+import 'package:daily_you/widgets/expressive_carousel.dart';
 import 'package:daily_you/widgets/mood_icon.dart';
 import 'package:daily_you/widgets/scaled_markdown.dart';
 import 'package:daily_you/widgets/entry_tag_chips.dart';
@@ -40,224 +48,143 @@ class EntryViewPage extends StatefulWidget {
 }
 
 class _EntryViewPageState extends State<EntryViewPage> {
+  static const double _moodInset = 4;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final entriesProvider = Provider.of<EntriesProvider>(context);
-    final entryImagesProvider = Provider.of<EntryImagesProvider>(context);
-    final entrySongsProvider = Provider.of<EntrySongsProvider>(context);
-    final entryLocationsProvider =
-        Provider.of<EntryLocationsProvider>(context);
-    final spacesProvider = Provider.of<SpacesProvider>(context);
-    final peopleProvider = Provider.of<PeopleProvider>(context);
+    final entryAttachmentsProvider =
+        Provider.of<EntryAttachmentsProvider>(context);
 
     final entry = entriesProvider.entries
         .where((e) => e.id == widget.entryId)
         .firstOrNull;
     if (entry == null) return const Scaffold();
 
-    final images = entryImagesProvider.getForEntry(entry);
-    final songs = entrySongsProvider.getForEntry(entry);
-    final location = entryLocationsProvider.getForEntryId(entry.id!);
-    final space = spacesProvider.getSpaceForEntry(entry.id!);
-    final taggedPeople = peopleProvider.getPeopleForEntry(entry.id!);
-
+    final attachments = entryAttachmentsProvider.getForEntry(entry);
     return Scaffold(
       appBar: AppBar(
         actions: [
-          _shareButton(context, entry, images),
-          _editButton(context, entry, images),
           PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded),
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'export_md',
-                child: Row(
-                  children: [
-                    Icon(Icons.description_rounded),
-                    SizedBox(width: 8),
-                    Text('Export Markdown'),
+              itemBuilder: (context) => [
+                    PopupMenuItem(
+                        value: 'markdown',
+                        child:
+                            Text(AppLocalizations.of(context)!.formatMarkdown))
                   ],
-                ),
-              ),
-            ],
-            onSelected: (val) {
-              if (val == 'export_md') {
-                final md = MarkdownIoHelper.formatEntryAsMarkdown(entry);
-                SharePlus.instance.share(ShareParams(
-                  text: md,
-                  subject:
-                      'daily_you_${entry.timeCreate.toIso8601String().split('T').first}.md',
-                ));
-              }
-            },
-          ),
+              onSelected: (_) => SharePlus.instance.share(ShareParams(
+                  text: MarkdownIoHelper.formatEntryAsMarkdown(entry),
+                  subject: TimeManager.formatDate(entry.timeCreate, context)))),
+          _shareButton(context, entry, attachments),
+          _editButton(context, entry, attachments),
         ],
       ),
       body: ListView(
         children: [
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: Padding(
-                padding: const EdgeInsets.only(left: 8, right: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (images.isNotEmpty && images.length > 1)
-                      _imagesList(context, images),
-                    if (images.isNotEmpty && images.length == 1)
-                      GestureDetector(
-                        child: Center(
-                          child: SizedBox(
-                            height: 220,
-                            width: 220,
-                            child: Card.filled(
-                                clipBehavior: Clip.antiAlias,
-                                child: LocalImageLoader(
-                                    imagePath: images.first.imgPath)),
+          ContentWidthLimit(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8, right: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (attachments.isNotEmpty && attachments.length > 1)
+                    _attachmentsList(context, attachments),
+                  if (attachments.isNotEmpty && attachments.length == 1)
+                    GestureDetector(
+                      child: Center(
+                        child: SizedBox(
+                          height: 220,
+                          width: 220,
+                          child: Card.filled(
+                              clipBehavior: Clip.antiAlias,
+                              child: AttachmentTileBackground(
+                                  attachment: attachments.first)),
+                        ),
+                      ),
+                      onTap: () async {
+                        await Navigator.of(context).push(
+                            AttachmentViewPage.route(
+                                attachments: attachments, index: 0));
+                      },
+                    ),
+                  Card.filled(
+                    color: Theme.of(context).colorScheme.surfaceContainer,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          child: Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            alignment: WrapAlignment.spaceBetween,
+                            children: [
+                              EntryDateTimeLabels(
+                                dateTime: entry.timeCreate,
+                                timeColor: theme.dividerColor,
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(_moodInset),
+                                child: MoodIcon(
+                                  moodValue: entry.mood,
+                                  size: 24,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        onTap: () async {
-                          await Navigator.of(context).push(MaterialPageRoute(
-                            allowSnapshotting: false,
-                            fullscreenDialog: true,
-                            builder: (context) => ImageViewPage(
-                              images: images,
-                              index: 0,
-                            ),
-                          ));
-                        },
-                      ),
-                    Card.filled(
-                      color: Theme.of(context).colorScheme.surfaceContainer,
-                      child: Padding(
-                        padding: const EdgeInsets.only(
-                            left: 8, top: 4, bottom: 4, right: 8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            SizedBox(
-                              width: double.infinity,
-                              child: Wrap(
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                alignment: WrapAlignment.spaceBetween,
-                                children: [
-                                  IntrinsicHeight(
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          TimeManager.formatDateWithWeekday(
-                                            entry.timeCreate,
-                                            context,
-                                          ),
-                                          style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold),
-                                        ),
-                                        VerticalDivider(
-                                          width: 16,
-                                          thickness: 2,
-                                          radius: BorderRadius.circular(4),
-                                        ),
-                                        Text(
-                                          TimeManager.localizedTimeFormat(
-                                                  context,
-                                                  TimeManager.currentLocale(
-                                                      context))
-                                              .format(entry.timeCreate),
-                                          style: TextStyle(
-                                              fontSize: 16,
-                                              color: theme.dividerColor),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  MoodIcon(
-                                    moodValue: entry.mood,
-                                    size: 24,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (space != null || taggedPeople.isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 4, bottom: 4),
-                                child: Wrap(
-                                  spacing: 6,
-                                  runSpacing: 4,
-                                  children: [
-                                    if (space != null)
-                                      Chip(
-                                        visualDensity: VisualDensity.compact,
-                                        avatar: const Icon(Icons.dashboard_rounded, size: 14),
-                                        label: Text(space.name,
-                                            style: const TextStyle(fontSize: 12)),
-                                      ),
-                                    for (final person in taggedPeople)
-                                      Chip(
-                                        visualDensity: VisualDensity.compact,
-                                        avatar: const Icon(Icons.person_rounded, size: 14),
-                                        label: Text('@${person.name}',
-                                            style: const TextStyle(fontSize: 12)),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            EntryTagChips(
-                              entryId: entry.id!,
-                              padding: const EdgeInsets.only(top: 2, bottom: 2),
-                              chipBuilder: (tag, entryTag) =>
-                                  TagChip(tag: tag, value: entryTag.value),
-                            ),
-                            if (location != null &&
-                                (location.placeName != null ||
-                                    location.latitude != null))
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8, bottom: 4),
-                                child: LocationMapPreviewWidget(
-                                  location: location,
-                                  isEditable: false,
-                                ),
-                              ),
-                          ],
+                        EntryTagChips(
+                          entryId: entry.id!,
+                          padding: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+                          chipBuilder: (tag, entryTag) =>
+                              TagChip(tag: tag, value: entryTag.value),
                         ),
-                      ),
+                      ],
                     ),
-                    if (entry.text.isNotEmpty)
-                      Card.filled(
-                          color: Theme.of(context).colorScheme.surfaceContainer,
-                          child: Padding(
-                              padding: const EdgeInsets.only(
-                                  left: 8, top: 4, bottom: 4, right: 8),
-                              child: ConfigProvider.instance
-                                      .get(Settings.markdownEnabled)
-                                  ? ScaledMarkdown(
-                                      data: entry.text,
-                                      selectable: false,
-                                    )
-                                  : SelectableText(
-                                      entry.text,
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          color: theme.colorScheme.onSurface),
-                                    ))),
-                    if (songs.isNotEmpty)
-                      for (final song in songs)
-                        SongCardWidget(song: song),
-                    Padding(
-                      padding: const EdgeInsets.only(
-                          left: 8, top: 4, bottom: 18, right: 8),
-                      child: Text(
-                        "${AppLocalizations.of(context)!.lastModified}: ${TimeManager.formatDateWithWeekday(entry.timeModified, context)} ${TimeManager.localizedTimeFormat(context, TimeManager.currentLocale(context)).format(entry.timeModified)}",
-                        style:
-                            TextStyle(fontSize: 12, color: theme.disabledColor),
-                      ),
+                  ),
+                  Wrap(spacing: 4, children: [
+                    if (context
+                            .watch<SpacesProvider>()
+                            .getSpaceForEntry(entry.id!)
+                        case final space?)
+                      Chip(
+                          avatar: const Icon(Icons.dashboard_rounded, size: 14),
+                          label: Text(space.name)),
+                    for (final person in context
+                        .watch<PeopleProvider>()
+                        .getPeopleForEntry(entry.id!))
+                      Chip(
+                          avatar: const Icon(Icons.person_rounded, size: 14),
+                          label: Text('@${person.name}')),
+                  ]),
+                  if (context
+                          .watch<EntryLocationsProvider>()
+                          .getForEntryId(entry.id!)
+                      case final location?)
+                    LocationMapPreviewWidget(location: location),
+                  for (final song in context
+                      .watch<EntrySongsProvider>()
+                      .getForEntryId(entry.id!))
+                    SongCardWidget(song: song),
+                  if (entry.text.isNotEmpty)
+                    Card.filled(
+                        color: Theme.of(context).colorScheme.surfaceContainer,
+                        child: Padding(
+                            padding: const EdgeInsets.only(
+                                left: 8, top: 4, bottom: 4, right: 8),
+                            child: ScaledMarkdown(
+                              data: entry.text,
+                            ))),
+                  Padding(
+                    padding: const EdgeInsets.only(
+                        left: 8, top: 4, bottom: 18, right: 8),
+                    child: Text(
+                      "${AppLocalizations.of(context)!.lastModified}: ${TimeManager.formatDateWithWeekday(entry.timeModified, context)} ${TimeManager.localizedTimeFormat(context, TimeManager.currentLocale(context)).format(entry.timeModified)}",
+                      style:
+                          TextStyle(fontSize: 12, color: theme.disabledColor),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -266,7 +193,8 @@ class _EntryViewPageState extends State<EntryViewPage> {
     );
   }
 
-  Widget _editButton(BuildContext context, entry, List<EntryImage> images) {
+  Widget _editButton(
+      BuildContext context, entry, List<EntryAttachment> attachments) {
     return IconButton(
         icon: const Icon(Icons.edit_rounded),
         onPressed: () async {
@@ -274,7 +202,7 @@ class _EntryViewPageState extends State<EntryViewPage> {
             allowSnapshotting: false,
             fullscreenDialog: true,
             pageBuilder: (context, _, __) =>
-                AddEditEntryPage(entry: entry, images: images),
+                AddEditEntryPage(entry: entry, attachments: attachments),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
               return FadeTransition(
@@ -289,109 +217,49 @@ class _EntryViewPageState extends State<EntryViewPage> {
         });
   }
 
-  Widget _shareButton(BuildContext context, entry, List<EntryImage> images) {
-    if (Platform.isAndroid && (images.isNotEmpty || entry.text.isNotEmpty)) {
+  Widget _shareButton(
+      BuildContext context, entry, List<EntryAttachment> attachments) {
+    if (Platform.isAndroid &&
+        (attachments.isNotEmpty || entry.text.isNotEmpty)) {
       return IconButton(
           icon: const Icon(Icons.share_rounded),
           onPressed: () async {
-            String sharedText = "";
-            if (entry.mood != null) {
-              sharedText = "${MoodIcon.getMoodIcon(entry.mood)} ";
-            }
-            sharedText =
-                "$sharedText${TimeManager.formatDateWithWeekday(entry.timeCreate, context)}\n${entry.text}";
+            final moodPrefix = MoodScaleProvider.instance
+                .moodPrefixOf(entry.mood, AppLocalizations.of(context)!);
+            final sharedText =
+                "$moodPrefix${TimeManager.formatDateWithWeekday(entry.timeCreate, context)}\n${entry.text}";
 
-            if (images.isNotEmpty) {
-              var bytes =
-                  await ImageStorage.instance.getBytes(images.first.imgPath);
-              if (bytes != null) {
-                await SharePlus.instance.share(ShareParams(
-                    files: [XFile.fromData(bytes, mimeType: "images/*")],
-                    fileNameOverrides: [images.first.imgPath],
-                    text: sharedText));
-              }
-            } else {
-              SharePlus.instance.share(ShareParams(text: sharedText));
+            final files = <XFile>[];
+            final fileNames = <String>[];
+            for (final attachment in attachments) {
+              final localPath = await AttachmentStorage.instance
+                  .getLocalPath(attachment.filePath, attachment.type);
+              if (localPath == null) continue;
+              files.add(XFile(localPath,
+                  mimeType: attachmentMimeType(
+                      attachment.filePath, attachment.type)));
+              fileNames.add(attachment.filePath);
             }
+            await SharePlus.instance.share(ShareParams(
+                files: files, fileNameOverrides: fileNames, text: sharedText));
           });
     }
     return Container();
   }
 
-  Widget _imagesList(BuildContext context, List<EntryImage> images) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const imageSize = 160.0;
-        final fits = images.length * imageSize <= constraints.maxWidth;
-
-        if (fits) {
-          return Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: images
-                  .map(
-                    (image) => SizedBox(
-                      width: imageSize,
-                      child: GestureDetector(
-                        child: Center(
-                          child: SizedBox(
-                            height: imageSize,
-                            width: imageSize,
-                            child: Card.filled(
-                                clipBehavior: Clip.antiAlias,
-                                child:
-                                    LocalImageLoader(imagePath: image.imgPath)),
-                          ),
-                        ),
-                        onTap: () async {
-                          await Navigator.of(context).push(MaterialPageRoute(
-                            allowSnapshotting: false,
-                            fullscreenDialog: true,
-                            builder: (context) => ImageViewPage(
-                              images: images,
-                              index: images.indexWhere((x) => x.id == image.id),
-                            ),
-                          ));
-                        },
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          );
-        }
-
-        return SizedBox(
-          height: imageSize,
-          child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: images.length,
-              itemBuilder: (context, index) {
-                return GestureDetector(
-                  child: Center(
-                    child: SizedBox(
-                      height: imageSize,
-                      width: imageSize,
-                      child: Card.filled(
-                          clipBehavior: Clip.antiAlias,
-                          child: LocalImageLoader(
-                              imagePath: images[index].imgPath)),
-                    ),
-                  ),
-                  onTap: () async {
-                    await Navigator.of(context).push(MaterialPageRoute(
-                      allowSnapshotting: false,
-                      fullscreenDialog: true,
-                      builder: (context) => ImageViewPage(
-                        images: images,
-                        index: index,
-                      ),
-                    ));
-                  },
-                );
-              }),
-        );
+  Widget _attachmentsList(
+      BuildContext context, List<EntryAttachment> attachments) {
+    return ExpressiveCarousel(
+      heightForItemWidth: (itemWidth) => itemWidth,
+      itemCount: attachments.length,
+      itemMinWidth: attachmentTileSize,
+      itemMaxWidth: attachmentTileSize,
+      onTap: (index) async {
+        await Navigator.of(context).push(
+            AttachmentViewPage.route(attachments: attachments, index: index));
       },
+      itemBuilder: (context, index) =>
+          AttachmentTileBackground(attachment: attachments[index]),
     );
   }
 }

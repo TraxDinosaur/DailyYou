@@ -1,14 +1,16 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'dart:async';
 import 'dart:io';
 
 import 'package:daily_you/database/entry_song_dao.dart';
 import 'package:daily_you/database/entry_store.dart';
-import 'package:daily_you/models/image.dart';
 import 'package:daily_you/models/location.dart';
 import 'package:daily_you/models/song.dart';
 import 'package:daily_you/notification_manager.dart';
 import 'package:daily_you/models/tag.dart';
-import 'package:daily_you/providers/entry_images_provider.dart';
 import 'package:daily_you/providers/entry_locations_provider.dart';
 import 'package:daily_you/providers/entry_songs_provider.dart';
 import 'package:daily_you/models/template.dart';
@@ -20,24 +22,38 @@ import 'package:daily_you/widgets/add_song_dialog.dart';
 import 'package:daily_you/widgets/entry_draft_dirty_tracker.dart';
 import 'package:daily_you/widgets/location_picker_dialog.dart';
 import 'package:daily_you/widgets/song_card_widget.dart';
+import 'package:daily_you/config_provider.dart';
+import 'package:daily_you/database/attachment_storage.dart';
+import 'package:daily_you/models/attachment.dart';
+import 'package:daily_you/providers/entry_attachments_provider.dart';
+import 'package:daily_you/widgets/app_dialog.dart';
+import 'package:daily_you/utils/file_size_format.dart';
+import 'package:daily_you/widgets/attachment_type_presentation.dart';
+import 'package:daily_you/widgets/content_width_limit.dart';
+import 'package:daily_you/widgets/entry_date_time_labels.dart';
+import 'package:daily_you/widgets/failure_dialog.dart';
+import 'package:daily_you/widgets/file_size_row.dart';
 import 'package:daily_you/widgets/tag_attachment_source.dart';
 import 'package:daily_you/widgets/tag_grouped_chip_list.dart';
 import 'package:daily_you/widgets/tag_picker_dialog.dart';
 import 'package:daily_you/widgets/tag_chip.dart';
 import 'package:daily_you/time_manager.dart';
 import 'package:provider/provider.dart';
+import 'package:daily_you/pages/audio_recorder_page.dart';
 import 'package:daily_you/pages/full_screen_text_editor_page.dart';
 import 'package:daily_you/providers/people_provider.dart';
 import 'package:daily_you/providers/spaces_provider.dart';
 import 'package:daily_you/widgets/editor_action_bar.dart';
 import 'package:daily_you/widgets/editor_action_bar/editor_keyboard_session.dart';
-import 'package:daily_you/widgets/entry_image_editable_list.dart';
 import 'package:daily_you/widgets/location_map_preview_widget.dart';
+import 'package:daily_you/widgets/editor_action_bar/toolbar_menu_action.dart';
+import 'package:daily_you/widgets/entry_attachment_editable_list.dart';
+import 'package:daily_you/widgets/icons/svg_icon.dart';
 import 'package:easy_debounce/easy_debounce.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:daily_you/l10n/generated/app_localizations.dart';
 import 'package:daily_you/models/entry.dart';
-import 'package:daily_you/widgets/entry_image_actions.dart';
+import 'package:daily_you/widgets/entry_attachment_actions.dart';
 import 'package:daily_you/widgets/entry_mood_picker.dart';
 import 'package:daily_you/widgets/entry_text_edit.dart';
 import 'package:daily_you/widgets/markdown_preview_controller.dart';
@@ -46,7 +62,7 @@ class AddEditEntryPage extends StatefulWidget {
   final Entry? entry;
   final DateTime? overrideCreateDate;
   final bool openCamera;
-  final List<EntryImage> images;
+  final List<EntryAttachment> attachments;
   final String? sharedText;
   final int? initialSpaceId;
   final List<int>? initialPersonIds;
@@ -56,7 +72,7 @@ class AddEditEntryPage extends StatefulWidget {
     this.entry,
     this.overrideCreateDate,
     this.openCamera = false,
-    this.images = const <EntryImage>[],
+    this.attachments = const <EntryAttachment>[],
     this.sharedText,
     this.initialSpaceId,
     this.initialPersonIds,
@@ -73,18 +89,17 @@ class AddEditEntryPage extends StatefulWidget {
 
 class _AddEditEntryPageState extends State<AddEditEntryPage>
     with WidgetsBindingObserver {
-  static const double _pageWidth = 800;
-
   late Entry _entry;
   int id = -1;
   String text = "";
   int? mood;
   DateTime? entryDate;
-  late List<EntryImage> _currentImages;
   late List<EntrySong> _currentSongs;
   EntryLocation? _currentLocation;
   int? _currentSpaceId;
   List<int> _currentPersonIds = [];
+  late List<EntryAttachment> _currentAttachments;
+  int _pendingAttachmentCount = 0;
   bool _loadingEntry = true;
   bool _openedCamera = false;
   final ScrollController _scrollController = ScrollController();
@@ -93,6 +108,7 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
       MarkdownPreviewController();
   final UndoHistoryController _undoController = UndoHistoryController();
   bool _deletingEntry = false;
+  bool _closing = false;
   bool _newEntry = false;
   bool _creatingNewEntry = false;
   late TagAttachmentSource _tagSource;
@@ -146,7 +162,8 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
       _currentLocation =
           EntryLocationsProvider.instance.getForEntryId(id)?.copy();
       _currentSpaceId = SpacesProvider.instance.getSpaceIdForEntry(id);
-      _currentPersonIds = List.from(PeopleProvider.instance.getPersonIdsForEntry(id));
+      _currentPersonIds =
+          List.from(PeopleProvider.instance.getPersonIdsForEntry(id));
       _tagSource = TagAttachmentSource.fromEntryTags(
           TagsProvider.instance.getEntryTagsForEntry(id));
       dirtyTrackerBaselineText = _entry.text;
@@ -176,8 +193,7 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
     });
 
     if (widget.sharedText != null) {
-      final sharedVideoId =
-          YouTubeUrlParser.extractVideoId(widget.sharedText!);
+      final sharedVideoId = YouTubeUrlParser.extractVideoId(widget.sharedText!);
       if (sharedVideoId != null) {
         unawaited(_autoAddSong(widget.sharedText!));
       }
@@ -190,7 +206,7 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
 
     if (widget.openCamera && !_openedCamera) {
       _openedCamera = true;
-      EntryImageActions.takePhoto(_addImage);
+      _importAttachments(EntryAttachmentActions.takePhoto());
     }
   }
 
@@ -198,9 +214,9 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _currentImages = List.empty(growable: true);
-    for (var image in widget.images) {
-      _currentImages.add(image.copy());
+    _currentAttachments = List.empty(growable: true);
+    for (var attachment in widget.attachments) {
+      _currentAttachments.add(attachment.copy());
     }
     _currentSongs = List.empty(growable: true);
     _initEntry();
@@ -245,7 +261,7 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
       Navigator.of(context).pop();
       return;
     }
-    showDialog(
+    showAppDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -259,7 +275,6 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
                 EasyDebounce.cancel("save-entry");
                 final navigator = Navigator.of(context);
                 if (_newEntry) {
-                  // Persist so there is a saved entry (and any images) to delete
                   await _saveEntry();
                 }
                 final entryToDelete = _entry;
@@ -272,6 +287,7 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
                   navigator.pop();
                 }
                 await EntryStore.instance.delete(entryToDelete);
+                await _deleteUnsavedFiles(_currentAttachments);
               },
             ),
             TextButton(
@@ -302,25 +318,15 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
             },
             child: Scaffold(
               appBar: AppBar(
-                  leading: BackButton(
-                    onPressed: () {
-                      // Pop edit page
-                      Navigator.of(context).pop();
-                      if (!_creatingNewEntry &&
-                          Navigator.of(context).canPop()) {
-                        // Pop view page
-                        Navigator.of(context).pop();
-                      }
-                    },
-                  ),
-                  actions: [_deleteButton(), _closeButton()]),
+                iconTheme: Theme.of(context).iconTheme,
+                leading: _deleteButton(),
+                actions: [_closeButton()],
+              ),
               body: EditorActionBarOverlay(
                 keyboardInset: keyboardInset,
                 body: LayoutBuilder(
                   builder: (context, constraints) {
-                    final sidePadding =
-                        ((constraints.maxWidth - _pageWidth) / 2)
-                            .clamp(0.0, double.infinity);
+                    final sidePadding = contentSideInset(constraints.maxWidth);
                     final capPadding =
                         EdgeInsets.symmetric(horizontal: sidePadding);
                     return CustomScrollView(
@@ -334,12 +340,18 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  if (_currentImages.isNotEmpty)
-                                    EntryImageEditableList(
-                                        images: _currentImages,
-                                        onImagesChanged: (images) async {
-                                          _currentImages = images;
+                                  if (_currentAttachments.isNotEmpty ||
+                                      _pendingAttachmentCount > 0)
+                                    EntryAttachmentEditableList(
+                                        attachments: _currentAttachments,
+                                        pendingCount: _pendingAttachmentCount,
+                                        onAttachmentsChanged:
+                                            (attachments) async {
+                                          final removed =
+                                              _unsavedRemovedBy(attachments);
+                                          _currentAttachments = attachments;
                                           await _saveEntry();
+                                          await _deleteUnsavedFiles(removed);
                                         }),
                                   StatefulBuilder(
                                     builder: (context, setLocalState) =>
@@ -366,7 +378,8 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
                   onTemplateInserted: _applyInsertedTemplateTags,
                   onTagSelected: (tag) => _tagSource.addTagId(tag.id!),
                   onPersonSelected: (person) {
-                    if (person.id != null && !_currentPersonIds.contains(person.id!)) {
+                    if (person.id != null &&
+                        !_currentPersonIds.contains(person.id!)) {
                       setState(() {
                         _currentPersonIds.add(person.id!);
                       });
@@ -420,7 +433,9 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
     final spacesProvider = SpacesProvider.instance;
     final peopleProvider = PeopleProvider.instance;
     final currentSpace = _currentSpaceId != null
-        ? spacesProvider.spaces.where((s) => s.id == _currentSpaceId).firstOrNull
+        ? spacesProvider.spaces
+            .where((s) => s.id == _currentSpaceId)
+            .firstOrNull
         : null;
 
     final taggedPeople = peopleProvider.people
@@ -746,84 +761,73 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
   }
 
   Widget _buildDateTimeButtons(BuildContext context, ThemeData theme) {
-    return IntrinsicHeight(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2.0),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextButton(
-              onPressed: () async {
-                _chooseDate();
-              },
-              style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.all(6)),
-              child: Text(
-                TimeManager.formatDateWithWeekday(entryDate!, context),
-                style: TextStyle(
-                    color: theme.colorScheme.primary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold),
-              ),
-            ),
-            VerticalDivider(
-              width: 6,
-              indent: 8,
-              endIndent: 8,
-              thickness: 2,
-              radius: BorderRadius.circular(4),
-            ),
-            TextButton(
-              onPressed: () async {
-                _chooseTime();
-              },
-              style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.all(6)),
-              child: Text(
-                TimeManager.localizedTimeFormat(
-                        context, TimeManager.currentLocale(context))
-                    .format(entryDate!),
-                style: TextStyle(
-                  color: theme.colorScheme.primary,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return EntryDateTimeLabels(
+      dateTime: entryDate!,
+      dateColor: theme.colorScheme.primary,
+      timeColor: theme.colorScheme.primary,
+      onDateTap: _chooseDate,
+      onTimeTap: _chooseTime,
     );
   }
 
   List<ToolbarAction> _buildMainActions(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return [
       ToolbarAction(
         icon: const Icon(Icons.local_offer_rounded),
-        onPressed: () => showDialog(
+        onPressed: () => showAppDialog(
           context: context,
           builder: (_) =>
               TagPickerDialog(mode: TagPickerMode.attach, source: _tagSource),
         ),
       ),
       ToolbarAction(
-        icon: const Icon(Icons.photo),
-        mayLeaveApp: true,
-        onPressed: () => EntryImageActions.pickFromGallery(_addImage),
+        icon: const SvgIcon('assets/icons/attach_file.svg'),
+        menu: [
+          ToolbarMenuAction(
+            icon: Icons.mic_rounded,
+            label: l10n.actionAddAudio,
+            onSelected: () =>
+                _importAttachments(EntryAttachmentActions.pickAudioFile()),
+          ),
+          ToolbarMenuAction(
+            icon: Icons.videocam_rounded,
+            label: l10n.actionAddVideo,
+            onSelected: () => _importAttachments(
+                EntryAttachmentActions.pickVideosFromGallery()),
+          ),
+          ToolbarMenuAction(
+            icon: Icons.photo_rounded,
+            label: l10n.actionAddImage,
+            onSelected: () =>
+                _importAttachments(EntryAttachmentActions.pickFromGallery()),
+          ),
+        ],
       ),
-      if (Platform.isAndroid)
-        ToolbarAction(
-          icon: const Icon(Icons.photo_camera_rounded),
-          mayLeaveApp: true,
-          onPressed: () => EntryImageActions.takePhoto(_addImage),
-        ),
-      if (Platform.isAndroid)
-        ToolbarAction(
-          icon: const Icon(Icons.videocam_rounded),
-          mayLeaveApp: true,
-          onPressed: () => EntryImageActions.recordVideo(_addImage),
-        ),
+      ToolbarAction(
+        icon: const Icon(Icons.photo_camera_rounded),
+        menu: [
+          ToolbarMenuAction(
+            icon: Icons.mic_rounded,
+            label: l10n.actionRecordAudio,
+            onSelected: _recordAudio,
+          ),
+          if (Platform.isAndroid) ...[
+            ToolbarMenuAction(
+              icon: Icons.videocam_rounded,
+              label: l10n.actionTakeVideo,
+              onSelected: () =>
+                  _importAttachments(EntryAttachmentActions.takeVideo()),
+            ),
+            ToolbarMenuAction(
+              icon: Icons.photo_camera_rounded,
+              label: l10n.actionTakePhoto,
+              onSelected: () =>
+                  _importAttachments(EntryAttachmentActions.takePhoto()),
+            ),
+          ],
+        ],
+      ),
       ToolbarAction(
         icon: const Icon(Icons.music_note_rounded),
         onPressed: _promptAddSong,
@@ -872,20 +876,31 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
 
   Widget _deleteButton() => IconButton(
         icon: const Icon(Icons.delete),
+        tooltip: MaterialLocalizations.of(context).deleteButtonTooltip,
         onPressed: () => _showDeleteEntryPopup(),
       );
 
   Widget _closeButton() => IconButton(
-        icon: Icon(
-            _creatingNewEntry ? Icons.check_rounded : Icons.edit_off_rounded),
-        onPressed: () => Navigator.of(context).pop(),
+        icon: const Icon(Icons.check_rounded),
+        tooltip: MaterialLocalizations.of(context).okButtonLabel,
+        onPressed: _saveAndClose,
       );
+
+  Future<void> _saveAndClose() async {
+    if (_closing) return;
+    _closing = true;
+    try {
+      await _saveEntry();
+    } finally {
+      if (mounted) Navigator.of(context).pop();
+    }
+  }
 
   Future<void> _chooseDate() async {
     DateTime? pickedDate = await TimeManager.pickDate(
       context,
       initialDate: entryDate!,
-      firstDate: DateTime(2000),
+      firstDate: TimeManager.minEntryDate,
       lastDate: DateTime.now(),
     );
     if (pickedDate == null) return;
@@ -900,7 +915,10 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
 
   Future<void> _chooseTime() async {
     final pickedTime = await showTimePicker(
-        context: context, initialTime: TimeOfDay.fromDateTime(entryDate!));
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(entryDate!),
+      builder: (context, child) => AppDialogTransition(child: child!),
+    );
     if (pickedTime == null) return;
 
     entryDate = entryDate!.copyWith(
@@ -925,7 +943,7 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
 
     final saved = await _draftSession.save(_buildDraft);
     _adoptSavedEntry(saved);
-    _adoptSavedImages(saved);
+    _adoptSavedAttachments(saved);
     await _persistSongs(saved.id!);
     if (_currentLocation != null) {
       if (_currentLocation!.placeName != null ||
@@ -937,7 +955,8 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
       }
     }
     if (_currentSpaceId != null) {
-      await SpacesProvider.instance.assignEntryToSpace(saved.id!, _currentSpaceId!);
+      await SpacesProvider.instance
+          .assignEntryToSpace(saved.id!, _currentSpaceId!);
     } else {
       await SpacesProvider.instance.unassignEntryFromSpace(saved.id!);
     }
@@ -1006,7 +1025,9 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
     return EntryDraft(
       entry: entry,
       tags: _tagSource.toEntryTags(id),
-      images: [for (final image in _currentImages) image.copy()],
+      attachments: [
+        for (final attachment in _currentAttachments) attachment.copy()
+      ],
     );
   }
 
@@ -1021,14 +1042,16 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
     );
   }
 
-  void _adoptSavedImages(Entry saved) {
+  void _adoptSavedAttachments(Entry saved) {
     final persistedIds = {
-      for (final image in EntryImagesProvider.instance.getForEntry(saved))
-        image.imgPath: image.id
+      for (final attachment
+          in EntryAttachmentsProvider.instance.getForEntry(saved))
+        attachment.filePath: attachment.id
     };
-    _currentImages = [
-      for (final image in _currentImages)
-        image.copy(id: persistedIds[image.imgPath], entryId: saved.id)
+    _currentAttachments = [
+      for (final attachment in _currentAttachments)
+        attachment.copy(
+            id: persistedIds[attachment.filePath], entryId: saved.id)
     ];
   }
 
@@ -1047,9 +1070,12 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
           mood: mood,
           date: entryDate!,
           tagSource: _tagSource,
-          hasImages: _currentImages.isNotEmpty,
+          hasAttachments: _currentAttachments.isNotEmpty,
         ) ||
-        _currentSongs.isNotEmpty;
+        _currentSongs.isNotEmpty ||
+        _currentLocation != null ||
+        _currentSpaceId != null ||
+        _currentPersonIds.isNotEmpty;
   }
 
   void _applyInsertedTemplateTags(Template template) {
@@ -1067,9 +1093,150 @@ class _AddEditEntryPageState extends State<AddEditEntryPage>
     });
   }
 
-  Future<void> _addImage(List<String> imgPaths) async {
-    _currentImages =
-        EntryImage.appendRanked(_currentImages, imgPaths, entryId: id);
+  List<EntryAttachment> _unsavedRemovedBy(List<EntryAttachment> remaining) => [
+        for (final attachment in _currentAttachments)
+          if (attachment.id == null &&
+              !remaining.any((kept) =>
+                  kept.type == attachment.type &&
+                  kept.filePath == attachment.filePath))
+            attachment
+      ];
+
+  Future<void> _deleteUnsavedFiles(List<EntryAttachment> attachments) async {
+    for (final attachment in attachments) {
+      if (attachment.id != null) continue;
+      final inUse = EntryAttachmentsProvider.instance.attachments.any((saved) =>
+          saved.type == attachment.type &&
+          saved.filePath == attachment.filePath);
+      if (inUse) continue;
+      await AttachmentStorage.instance
+          .delete(attachment.filePath, attachment.type);
+    }
+  }
+
+  Future<void> _addAttachments(List<NewAttachment> newAttachments) async {
+    _currentAttachments = EntryAttachment.appendRanked(
+        _currentAttachments, newAttachments,
+        entryId: id);
     await _saveEntry();
+  }
+
+  Future<void> _importAttachments(
+      Future<List<PendingAttachment>> picking) async {
+    final List<PendingAttachment> pending;
+    try {
+      pending = await picking;
+    } catch (error) {
+      await _showAttachmentFailure(error);
+      return;
+    }
+    if (pending.isEmpty) return;
+    if (!mounted) {
+      await EntryAttachmentActions.discardAll(pending);
+      return;
+    }
+
+    setState(() => _pendingAttachmentCount += pending.length);
+    final large = pending.where((attachment) => attachment.isLarge).firstOrNull;
+    if (large != null) {
+      unawaited(_warnAboutSize(large.type, large.name, large.sizeBytes!));
+    }
+
+    Object? failure;
+    var stored = const <NewAttachment>[];
+    try {
+      stored = await EntryAttachmentActions.storeAll(pending,
+          isCancelled: () => !mounted);
+    } catch (error) {
+      failure = error;
+    } finally {
+      _pendingAttachmentCount -= pending.length;
+      if (stored.isEmpty && mounted) setState(() {});
+    }
+    if (stored.isNotEmpty) await _addAttachments(stored);
+    if (failure != null || (mounted && stored.length < pending.length)) {
+      await _showAttachmentFailure(failure);
+    }
+  }
+
+  Future<void> _showAttachmentFailure(Object? error) async {
+    if (!mounted) return;
+    await showFailureDialog(context,
+        description:
+            AppLocalizations.of(context)!.attachmentAddErrorDescription,
+        error: error);
+  }
+
+  Future<void> _recordAudio() async {
+    final attachment = await Navigator.of(context).push<NewAttachment>(
+      MaterialPageRoute(
+        allowSnapshotting: false,
+        fullscreenDialog: true,
+        builder: (context) => const AudioRecorderPage(),
+      ),
+    );
+    if (attachment == null) return;
+    await _addAttachments([attachment]);
+    final sizeBytes = await AttachmentStorage.instance
+        .sizeBytes(attachment.filePath, attachment.type);
+    if (sizeBytes != null && attachment.type.isLarge(sizeBytes)) {
+      await _warnAboutSize(attachment.type, attachment.filePath, sizeBytes);
+    }
+  }
+
+  Future<void> _warnAboutSize(
+      AttachmentType type, String name, int sizeBytes) async {
+    if (ConfigProvider.instance.get(Settings.suppressLargeAttachmentWarning) ||
+        !mounted) {
+      return;
+    }
+
+    var suppress = false;
+    await showAppDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setLocalState) => AlertDialog(
+          title: Text(
+              AppLocalizations.of(dialogContext)!.largeAttachmentWarningTitle),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(AppLocalizations.of(dialogContext)!
+                  .largeAttachmentWarningDescription),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: FileSizeRow(
+                  icon: type.icon,
+                  label: name,
+                  sizeText: formatFileSize(sizeBytes,
+                      AppLocalizations.of(dialogContext)!.localeName),
+                ),
+              ),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: suppress,
+                onChanged: (value) =>
+                    setLocalState(() => suppress = value ?? false),
+                title: Text(AppLocalizations.of(dialogContext)!.dontShowAgain),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                if (suppress) {
+                  await ConfigProvider.instance
+                      .set(Settings.suppressLargeAttachmentWarning, true);
+                }
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+              },
+              child:
+                  Text(MaterialLocalizations.of(dialogContext).okButtonLabel),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

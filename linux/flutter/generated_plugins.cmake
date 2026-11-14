@@ -5,8 +5,12 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   audioplayers_linux
   dynamic_color
+  fc_native_video_thumbnail
   file_selector_linux
   flutter_secure_storage_linux
+  media_kit_libs_linux
+  media_kit_video
+  record_linux
   system_theme
   url_launcher_linux
 )

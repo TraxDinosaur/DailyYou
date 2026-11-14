@@ -21,6 +21,21 @@ class AppLocalizationsRu extends AppLocalizations {
   String get actionTakePhoto => 'Сделать фото';
 
   @override
+  String get actionTakeVideo => 'Снять видео';
+
+  @override
+  String get actionRecordAudio => 'Запись звука';
+
+  @override
+  String get actionAddImage => 'Добавить изображение';
+
+  @override
+  String get actionAddVideo => 'Добавить видео';
+
+  @override
+  String get actionAddAudio => 'Добавить аудио';
+
+  @override
   String get actionToday => 'Сегодня';
 
   @override
@@ -135,7 +150,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noLogs => 'Нет записей…';
 
   @override
-  String get noResults => 'No Results…';
+  String get noResults => 'Результаты отсутствуют…';
 
   @override
   String get sortDateTitle => 'Дата';
@@ -176,7 +191,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String chartOverTimeTitle(Object tag) {
-    return '$tag Over Time';
+    return '$tag С течением времени';
+  }
+
+  @override
+  String chartInfluencesTitle(Object tag) {
+    return 'Influences $tag';
   }
 
   @override
@@ -222,7 +242,7 @@ class AppLocalizationsRu extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Great Days $count',
+      other: 'Несколько дней $count',
     );
     return '$_temp0';
   }
@@ -238,6 +258,108 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String streakDayLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Day Streak',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsLogsLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Logs',
+      one: 'Log',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsWordsLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Words',
+      one: 'Word',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsDaysLabel(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Days',
+      one: 'Day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get statsLongestStreakTitle => 'Longest Streak';
+
+  @override
+  String get statsWritingTitle => 'Writing';
+
+  @override
+  String get statsWordsPerLogTitle => 'Words per Log';
+
+  @override
+  String get statsLongestLogTitle => 'Longest Log';
+
+  @override
+  String statsMostActiveTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Most Active Days',
+      one: 'Most Active Day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String statsDaysOfRange(int written, int total) {
+    final intl.NumberFormat writtenNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String writtenString = writtenNumberFormat.format(written);
+    final intl.NumberFormat totalNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String totalString = totalNumberFormat.format(total);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$totalString Days',
+      one: '$totalString Day',
+    );
+    return '$writtenString of $_temp0';
+  }
+
+  @override
+  String get statsAverageTitle => 'Average';
+
+  @override
+  String get statsHighestTitle => 'Highest';
+
+  @override
+  String get statsLowestTitle => 'Lowest';
+
+  @override
+  String get statsDaysLoggedTitle => 'Days Logged';
+
+  @override
+  String get statsOfDaysLabel => 'of Days';
+
+  @override
+  String get statsCustomizeTitle => 'Customize';
+
+  @override
   String get errorExternalStorageAccessTitle =>
       'Нет доступа к внешнему хранилищу';
 
@@ -250,17 +372,21 @@ class AppLocalizationsRu extends AppLocalizations {
       'Продолжить с локальным хранением данных';
 
   @override
-  String get errorExternalStorageChooseLocation => 'Choose Another Location';
-
-  @override
   String get databaseMigrationErrorTitle => 'Не смогли перенести ваши данные';
 
   @override
   String get databaseMigrationErrorDescription =>
-      'Your entries are safe but couldn\'t be moved to the app\'s storage.\n\nTry again, and report the issue if it keeps happening.';
+      'Ваши записи в безопасности, но их не удалось переместить в хранилище приложения.\n\nПопробуйте еще раз и сообщите о проблеме, если она повторится.';
 
   @override
   String get databaseMigrationErrorRetry => 'Повторить';
+
+  @override
+  String get databaseNewerErrorTitle => 'Требуется обновление';
+
+  @override
+  String get databaseNewerErrorDescription =>
+      'Ваши данные были сохранены более новой версией Daily You. Эта версия не может безопасно открыть их. Обновите приложение, чтобы продолжить.';
 
   @override
   String get errorReport => 'Сообщить о проблеме';
@@ -285,6 +411,22 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get deletePhotoDescription => 'Вы хотите удалить это фото?';
+
+  @override
+  String get deleteAttachmentTitle => 'Удалить вложение';
+
+  @override
+  String get deleteAttachmentDescription => 'Вы хотите удалить это вложение?';
+
+  @override
+  String get largeAttachmentWarningTitle => 'Большое вложение';
+
+  @override
+  String get largeAttachmentWarningDescription =>
+      'Этот файл имеет большой размер и увеличит объем вашей резервной копии.';
+
+  @override
+  String get dontShowAgain => 'Больше не показывать';
 
   @override
   String get pageSettingsTitle => 'Настройки';
@@ -317,7 +459,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get calendarSystemGregorian => 'Григорианский календарь';
 
   @override
-  String get calendarSystemJalali => 'Jalali';
+  String get calendarSystemJalali => 'Джалали';
 
   @override
   String get settingsUseSystemAccentColor =>
@@ -338,6 +480,21 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get moodIconPrompt => 'Введите значок (емодзи)';
+
+  @override
+  String get moodVeryUnpleasant => 'Very Unpleasant';
+
+  @override
+  String get moodUnpleasant => 'Unpleasant';
+
+  @override
+  String get moodNeutral => 'Neutral';
+
+  @override
+  String get moodPleasant => 'Pleasant';
+
+  @override
+  String get moodVeryPleasant => 'Very Pleasant';
 
   @override
   String get settingsFlashbacksViewLayout => 'Отображение флеш-беков';
@@ -446,7 +603,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get templateDefaultReflectionBody =>
-      '### What did you enjoy about today?\n- \n\n### What are you thankful for?\n- \n\n### What are you looking forward to?\n- ';
+      'Что вам понравилось сегодня?\n- \n\nЗа что вы благодарны?\n- \n\n### Чего вы с нетерпением ждёте?\n- ';
 
   @override
   String get settingsTagsTitle => 'Теги';
@@ -455,96 +612,96 @@ class AppLocalizationsRu extends AppLocalizations {
   String get manageTags => 'Управлять тегами';
 
   @override
-  String get tagTypeLabelTitle => 'Label';
+  String get tagTypeLabelTitle => 'Этикетка';
 
   @override
-  String get tagTypeTrackerTitle => 'Tracker';
+  String get tagTypeTrackerTitle => 'Трекер';
 
   @override
-  String get nameHint => 'Name';
+  String get nameHint => 'Имя';
 
   @override
-  String get tagColorLabel => 'Color';
+  String get tagColorLabel => 'Цвет';
 
   @override
-  String get iconPickerTitle => 'Choose Icon';
+  String get iconPickerTitle => 'Выберите значок';
 
   @override
-  String get iconPickerIconsTab => 'Icons';
+  String get iconPickerIconsTab => 'Иконки';
 
   @override
-  String get iconPickerCustomTab => 'Custom';
+  String get iconPickerCustomTab => 'Обычай';
 
   @override
-  String get iconPickerSearchHint => 'Search icons…';
+  String get iconPickerSearchHint => 'Значки поиска…';
 
   @override
-  String get colorPickerTitle => 'Choose Color';
+  String get colorPickerTitle => 'Выберите цвет';
 
   @override
-  String get colorPickerPaletteTab => 'Colors';
+  String get colorPickerPaletteTab => 'Цвета';
 
   @override
-  String get iconGroupMoodPeople => 'Mood & People';
+  String get iconGroupMoodPeople => 'Настроение и люди';
 
   @override
-  String get iconGroupHealth => 'Health';
+  String get iconGroupHealth => 'Здоровье';
 
   @override
-  String get iconGroupWorkFinance => 'Work & Finance';
+  String get iconGroupWorkFinance => 'Работа и финансы';
 
   @override
-  String get iconGroupHabitsGoals => 'Habits & Goals';
+  String get iconGroupHabitsGoals => 'Привычки и цели';
 
   @override
-  String get iconGroupNature => 'Nature';
+  String get iconGroupNature => 'Природа';
 
   @override
-  String get iconGroupFoodDrink => 'Food & Drink';
+  String get iconGroupFoodDrink => 'Еда и напитки';
 
   @override
-  String get iconGroupHome => 'Home';
+  String get iconGroupHome => 'Дом';
 
   @override
-  String get iconGroupTravel => 'Travel';
+  String get iconGroupTravel => 'Путешествовать';
 
   @override
-  String get iconGroupSymbols => 'Symbols';
+  String get iconGroupSymbols => 'Символы';
 
   @override
-  String get tagCategoryLabel => 'Category';
+  String get tagCategoryLabel => 'Категория';
 
   @override
-  String get tagLabel => 'Tag';
+  String get tagLabel => 'Ярлык';
 
   @override
-  String get tagCategoryUncategorized => 'Uncategorized';
+  String get tagCategoryUncategorized => 'Без категории';
 
   @override
-  String get newCategoryTitle => 'New Category';
+  String get newCategoryTitle => 'Новая категория';
 
   @override
-  String get shareButtonLabel => 'Share';
+  String get shareButtonLabel => 'Поделиться';
 
   @override
-  String get importErrorDescription => 'Failed to import file!';
+  String get importErrorDescription => 'Не удалось импортировать файл!';
 
   @override
-  String get exportErrorDescription => 'Failed to export file!';
+  String get exportErrorDescription => 'Не удалось экспортировать файл!';
 
   @override
-  String get deleteTitle => 'Delete';
+  String get deleteTitle => 'Удалить';
 
   @override
   String deleteTagMessage(num count, Object name) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: ' It is used in $count logs.',
-      one: ' It is used in 1 log.',
+      other: ' Он используется в $count логах.',
+      one: ' Используется в 1 логе.',
       zero: '',
     );
-    return 'Delete \"$name\"?$_temp0';
+    return 'Исключить \"$name\"?$_temp0';
   }
 
   @override
@@ -552,50 +709,145 @@ class AppLocalizationsRu extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: ' Its $count tags will also be deleted.',
-      one: ' Its 1 tag will also be deleted.',
-      zero: '',
+      other: ' Его теги ($count) также будут удалены.',
+      one: ' Его 1 тег также будет удален.',
     );
-    return 'Delete \"$name\"?$_temp0';
+    return 'Исключить \"$name\"?$_temp0';
   }
 
   @override
   String deleteTemplateMessage(Object name) {
-    return 'Delete \"$name\"?';
+    return 'Исключить \"$name\"?';
   }
 
   @override
-  String get filterTagsTitle => 'Filter';
+  String get filterTagsTitle => 'Фильтр';
 
   @override
-  String get tagFilterModeAny => 'Any Tag';
+  String get tagFilterModeAny => 'Любой';
 
   @override
-  String get tagFilterModeAll => 'All Tags';
+  String get tagFilterModeAll => 'Все теги';
 
   @override
-  String get clearAllFilters => 'Clear All';
+  String get clearAllFilters => 'Все';
 
   @override
-  String get noTagsFilterLabel => 'No Tags';
+  String get noTagsFilterLabel => 'Нет тегов';
 
   @override
-  String get addTagsTitle => 'Add Tags';
+  String get clearFilter => 'Clear';
 
   @override
-  String get addTagsSearchHint => 'Search tags…';
+  String showLogsCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Show $count logs',
+      one: 'Show $count log',
+    );
+    return '$_temp0';
+  }
 
   @override
-  String get tagPickerSortManualLabel => 'Manual order';
+  String get filterPillAttachments => 'Attachments';
 
   @override
-  String get tagPickerSortUsageLabel => 'Sort by usage';
+  String get filterPillKeywords => 'Keywords';
 
   @override
-  String get tagFavoriteName => 'Favorite';
+  String get noMoodFilterLabel => 'No Mood';
+
+  @override
+  String get noAttachmentsFilterLabel => 'No Attachments';
+
+  @override
+  String get noTextFilterLabel => 'No Text';
+
+  @override
+  String partialMatchCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count partial matches',
+      one: '$count partial match',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String tagCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tags',
+      one: '$count tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dateFilterLastMonths(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Last $count months',
+      one: 'Last month',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dateFilterCustomRange => 'Custom range';
+
+  @override
+  String get keywordFilterHint => 'Add a keyword…';
+
+  @override
+  String get keywordFilterMatchAll => 'All keywords';
+
+  @override
+  String get keywordFilterMatchAny => 'Any keyword';
+
+  @override
+  String get keywordFilterMatchCase => 'Match case';
+
+  @override
+  String keywordCount(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count keywords',
+      one: '$count keyword',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dateFilterRange(String start, String end) {
+    return '$start – $end';
+  }
+
+  @override
+  String get addTagsTitle => 'Добавить теги';
+
+  @override
+  String get addTagsSearchHint => 'Поиск тегов..';
+
+  @override
+  String get tagPickerSortManualLabel => 'Ручной заказ';
+
+  @override
+  String get tagPickerSortUsageLabel => 'Сортировка по использованию';
+
+  @override
+  String get tagFavoriteName => 'Закладки';
 
   @override
   String get tagEnergyName => 'Energy';
+
+  @override
+  String get tagCategoryPeopleName => 'People';
 
   @override
   String get tagCategoryActivitiesName => 'Activities';
@@ -641,13 +893,16 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get welcomeLogBodyText =>
-      '## Welcome to Daily You\n\n> Every day is worth remembering, capture it!\n\n**Daily You** is free, [open source](https://github.com/TraxDinosaur/DailyYou), and community supported. Built around the belief that your diary should be yours, not a product:\n\n- No ads\n- No locked features\n- No tracking or data collection\n\nWhether you\'re journaling, reflecting, or just noting what made you smile, **Daily You** gives you a private space that\'s _truly your own_.';
+      '## Welcome to Daily You\n\n> Every day is worth remembering, capture it!\n\n**Daily You** is free, [open source](https://github.com/Demizo/Daily_You), and community supported. Built around the belief that your diary should be yours, not a product:\n\n- No ads\n- No locked features\n- No tracking or data collection\n\nWhether you\'re journaling, reflecting, or just noting what made you smile, **Daily You** gives you a private space that\'s _truly your own_.';
 
   @override
   String get settingsStorageTitle => 'Хранилище';
 
   @override
   String get settingsImageQuality => 'Качество изображения';
+
+  @override
+  String get settingsMediaQualityTitle => 'Media Quality';
 
   @override
   String get imageQualityHigh => 'Высокое';
@@ -662,10 +917,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get imageQualityNoCompression => 'Без сжатия';
 
   @override
+  String get settingsStorageUsage => 'Storage Usage';
+
+  @override
   String get settingsLogFolder => 'Папка для записей';
 
   @override
   String get settingsImageFolder => 'Папка для картинок';
+
+  @override
+  String get settingsExternalSyncTitle => 'Sync with External Location';
+
+  @override
+  String get chooseFolderHint => 'Choose a folder';
 
   @override
   String get warningTitle => 'Внимание';
@@ -684,6 +948,10 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get imageFolderErrorDescription =>
       'Не удалось поменять папку для картинок!';
+
+  @override
+  String get syncErrorDescription =>
+      'Failed to sync with the external location!';
 
   @override
   String get backupErrorDescription => 'Не удалось создать резервную копию!';
@@ -807,6 +1075,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get exportImages => 'Экспорт изображений';
 
   @override
+  String get exportIncludeTitle => 'Include';
+
+  @override
   String get settingsImport => 'Импорт';
 
   @override
@@ -857,6 +1128,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get formatMarkdown => 'Markdown';
+
+  @override
+  String get formatCsv => 'CSV';
+
+  @override
+  String get formatJson => 'JSON';
 
   @override
   String get settingsDeleteAllLogsTitle => 'Удалить все записи';
@@ -946,6 +1223,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get imagesTitle => 'Изображения';
 
   @override
+  String get audioTitle => 'Audio';
+
+  @override
+  String get videoTitle => 'Video';
+
+  @override
   String get tagMoodTitle => 'Настроение';
 
   @override
@@ -970,6 +1253,102 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get shareAddToLogPickerTitle => 'Choose a log';
+
+  @override
+  String get attachmentAddErrorDescription => 'Failed to add attachment!';
+
+  @override
+  String get attachmentLoadFailed => 'Could not open this attachment';
+
+  @override
+  String get attachmentNoAppToOpen => 'No app can open this attachment';
+
+  @override
+  String get recorderDiscardTitle => 'Discard recording?';
+
+  @override
+  String get recorderDiscardDescription => 'This recording will be deleted.';
+
+  @override
+  String get recorderDiscardAction => 'Discard';
+
+  @override
+  String get recorderPermissionDenied =>
+      'Microphone permission is required to record audio';
+
+  @override
+  String get recorderErrorDescription => 'Failed to record audio!';
+
+  @override
+  String get gallerySelectAll => 'Select all';
+
+  @override
+  String get gallerySelectAction => 'Select';
+
+  @override
+  String get galleryOpenAction => 'Open';
+
+  @override
+  String deleteLogsMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Delete $count logs? Their attachments are removed with them.',
+      one: 'Delete $count log? Its attachments are removed with it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get newLogAction => 'New Log';
+
+  @override
+  String get removeTagsTitle => 'Remove Tags';
+
+  @override
+  String get applyButtonLabel => 'Apply';
+
+  @override
+  String addTagsConfirmMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Add the chosen tags to $count logs?',
+      one: 'Add the chosen tags to $count log?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String removeTagsConfirmMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Remove the chosen tags from $count logs?',
+      one: 'Remove the chosen tags from $count log?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String selectPartialMatchesMessage(num count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Also select $count partial matches?',
+      one: 'Also select $count partial match?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get selectExactMatchesOnly => 'Exact only';
+
+  @override
+  String get selectIncludingPartialMatches => 'Include';
+
+  @override
+  String get errorExternalStorageChooseLocation => 'Choose Another Location';
 
   @override
   String get settingsAllowNetworkTitle => 'Allow network access';
@@ -1078,4 +1457,17 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get settingsAppFont => 'Font style';
+
+  @override
+  String get settingsExportPreferences => 'Export app settings';
+
+  @override
+  String get settingsRestorePreferences => 'Restore app settings';
+
+  @override
+  String get settingsRestorePreferencesConfirm =>
+      'Restore appearance and editor preferences? Your journal and security settings stay unchanged.';
+
+  @override
+  String get chooseMoodEmoji => 'Choose emoji';
 }

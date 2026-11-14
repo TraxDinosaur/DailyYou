@@ -1,6 +1,11 @@
-import 'package:daily_you/database/image_storage.dart';
 import 'package:daily_you/utils/media_type_utils.dart';
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
+import 'package:daily_you/database/attachment_storage.dart';
 import 'package:daily_you/widgets/local_image_cache.dart';
+import 'package:daily_you/widgets/image_decoded_notification.dart';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -11,7 +16,7 @@ class LocalImageLoader extends StatefulWidget {
   const LocalImageLoader({
     super.key,
     required this.imagePath,
-    this.cacheSize = 500,
+    this.cacheSize = LocalImageCache.previewWidth,
   });
 
   @override
@@ -21,7 +26,7 @@ class LocalImageLoader extends StatefulWidget {
 class _LocalImageLoaderState extends State<LocalImageLoader> {
   Uint8List? _bytes;
   bool _imageNotFound = false;
-  int _cacheVersion = ImageStorage.instance.cacheVersion.value;
+  int _cacheVersion = AttachmentStorage.instance.cacheVersion.value;
 
   @override
   void initState() {
@@ -33,7 +38,7 @@ class _LocalImageLoaderState extends State<LocalImageLoader> {
   void didUpdateWidget(covariant LocalImageLoader oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    final cacheVersion = ImageStorage.instance.cacheVersion.value;
+    final cacheVersion = AttachmentStorage.instance.cacheVersion.value;
     if (oldWidget.imagePath != widget.imagePath ||
         oldWidget.cacheSize != widget.cacheSize ||
         cacheVersion != _cacheVersion) {
@@ -67,6 +72,7 @@ class _LocalImageLoaderState extends State<LocalImageLoader> {
         width: double.infinity,
         height: double.infinity,
         cacheWidth: widget.cacheSize,
+        frameBuilder: notifyWhenDecoded,
         errorBuilder: (_, __, ___) {
           return const Center(
             child: Icon(

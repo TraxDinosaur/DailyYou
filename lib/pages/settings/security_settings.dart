@@ -100,8 +100,7 @@ class SecuritySettingsPageState extends State<SecuritySettings> {
                 title: AppLocalizations.of(context)!.securityQuestionTitle,
                 hint: SecurityQuestionHelper.hasSecurityQuestion
                     ? SecurityQuestionHelper.question
-                    : AppLocalizations.of(context)!
-                        .securityQuestionDescription,
+                    : AppLocalizations.of(context)!.securityQuestionDescription,
                 icon: const Icon(Icons.help_outline_rounded),
                 onPressed: () => _promptSetupSecurityQuestion(context)),
           if (configProvider.get(Settings.requirePassword) &&
@@ -156,8 +155,8 @@ class SecuritySettingsPageState extends State<SecuritySettings> {
             ),
           if (Platform.isAndroid)
             SettingsToggle(
-              title: AppLocalizations.of(context)!
-                  .settingsScreenProtectionTitle,
+              title:
+                  AppLocalizations.of(context)!.settingsScreenProtectionTitle,
               hint: AppLocalizations.of(context)!
                   .settingsScreenProtectionDescription,
               setting: Settings.screenProtection,

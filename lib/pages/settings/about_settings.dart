@@ -43,7 +43,8 @@ class _AboutSettingsState extends State<AboutSettings> {
                 icon: Icon(Icons.open_in_new_rounded),
                 onPressed: () async {
                   await launchUrl(
-                      Uri.https("github.com", "/TraxDinosaur/DailyYou/releases"),
+                      Uri.https(
+                          "github.com", "/TraxDinosaur/DailyYou/releases"),
                       mode: LaunchMode.externalApplication);
                 }),
             onTap: () async {
@@ -76,7 +77,8 @@ class _AboutSettingsState extends State<AboutSettings> {
               hint: "github.com/TraxDinosaur/DailyYou",
               icon: Icon(Icons.open_in_new_rounded),
               onPressed: () async {
-                await launchUrl(Uri.https("github.com", "/TraxDinosaur/DailyYou"),
+                await launchUrl(
+                    Uri.https("github.com", "/TraxDinosaur/DailyYou"),
                     mode: LaunchMode.externalApplication);
               }),
           SettingsIconAction(

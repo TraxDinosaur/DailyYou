@@ -1,14 +1,19 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'dart:async';
 import 'dart:io';
 
 import 'package:daily_you/config_provider.dart';
 import 'package:daily_you/database/app_database.dart';
-import 'package:daily_you/database/image_storage.dart';
+import 'package:daily_you/database/attachment_storage.dart';
 import 'package:daily_you/device_info_service.dart';
 import 'package:daily_you/launch_intent.dart';
 import 'package:daily_you/main.dart';
 import 'package:daily_you/utils/auto_backup_schedule.dart';
 import 'package:daily_you/utils/backup_restore_utils.dart';
+import 'package:daily_you/widgets/app_dialog.dart';
 import 'package:daily_you/widgets/auth_popup.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:daily_you/l10n/generated/app_localizations.dart';
@@ -17,7 +22,7 @@ import 'package:quick_actions/quick_actions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-enum _LaunchErrorType { externalAccess, migrationFailed }
+enum _LaunchErrorType { externalAccess, migrationFailed, appOutdated }
 
 class LaunchPage extends StatefulWidget {
   final Widget nextPage;
@@ -117,7 +122,7 @@ class _LaunchPageState extends State<LaunchPage> {
     // Prompt unlock before initializing database
     if (ConfigProvider.instance.get(Settings.requirePassword)) {
       if (!mounted) return;
-      await showDialog(
+      await showAppDialog(
           context: context,
           builder: (context) => AuthPopup(
                 mode: AuthPopupMode.unlock,
@@ -132,6 +137,11 @@ class _LaunchPageState extends State<LaunchPage> {
     bool initialized;
     try {
       initialized = await AppDatabase.instance.init();
+    } on DatabaseNewerThanAppException catch (error, stackTrace) {
+      _logger.severe('Database is newer than the app', error, stackTrace);
+      _errorType = _LaunchErrorType.appOutdated;
+      _showError();
+      return;
     } catch (error, stackTrace) {
       _logger.severe('Database initialization failed', error, stackTrace);
       initialized = false;
@@ -139,33 +149,46 @@ class _LaunchPageState extends State<LaunchPage> {
 
     if (initialized) {
       await _migrateImagesFromExternalStorage();
-      if (ImageStorage.instance.usingExternalLocation()) {
-        if (await ImageStorage.instance.hasExternalLocationPermission()) {
-          unawaited(ImageStorage.instance.syncImageFolder(false).then((_) {},
-              onError: (Object error, StackTrace stackTrace) {
-            _logger.severe(
-                'Syncing the image folder failed', error, stackTrace);
-          }));
-          unawaited(_catchUpMissedAutoBackup());
-          await _nextPage();
+      if (AttachmentStorage.instance.usingExternalLocation()) {
+        if (!await AttachmentStorage.instance.hasExternalLocationPermission()) {
+          _errorType = _LaunchErrorType.externalAccess;
+          _showError();
           return;
         }
-        _errorType = _LaunchErrorType.externalAccess;
+        unawaited(AttachmentStorage.instance
+            .syncAttachmentFolders(false)
+            .catchError((Object error, StackTrace stackTrace) {
+          _logger.severe(
+              'Syncing the attachment folders failed', error, stackTrace);
+        }).whenComplete(_deleteOrphanedAttachments));
       } else {
-        unawaited(_catchUpMissedAutoBackup());
-        await _nextPage();
-        return;
+        unawaited(_deleteOrphanedAttachments());
       }
-    } else {
-      _errorType = AppDatabase.instance.migrationFailed
-          ? _LaunchErrorType.migrationFailed
-          : _LaunchErrorType.externalAccess;
+      unawaited(_catchUpMissedAutoBackup());
+      await _nextPage();
+      return;
     }
 
+    _errorType = AppDatabase.instance.migrationFailed
+        ? _LaunchErrorType.migrationFailed
+        : _LaunchErrorType.externalAccess;
+    _showError();
+  }
+
+  void _showError() {
     if (!mounted) return;
     setState(() {
       isLoading = false;
     });
+  }
+
+  Future<void> _deleteOrphanedAttachments() async {
+    try {
+      await AttachmentStorage.instance.deleteOrphanedAttachments();
+    } catch (error, stackTrace) {
+      _logger.warning(
+          'Deleting orphaned attachments failed', error, stackTrace);
+    }
   }
 
   Future<void> _catchUpMissedAutoBackup() async {
@@ -192,81 +215,37 @@ class _LaunchPageState extends State<LaunchPage> {
   }
 
   Future<void> _reportIssue() async {
-    await launchUrl(Uri.https("github.com", "/TraxDinosaur/DailyYou/issues"),
+    await launchUrl(Uri.https("github.com", "/Demizo/Daily_You/issues"),
         mode: LaunchMode.externalApplication);
   }
 
   Future<void> _migrateImagesFromExternalStorage() async {
-    if (!await ImageStorage.instance.needsImageMigration()) return;
+    if (!await AttachmentStorage.instance.needsImageMigration()) return;
     if (!mounted) return;
 
-    final statusNotifier = ValueNotifier<String>("");
-    BackupRestoreUtils.showLoadingStatus(context, statusNotifier);
-
-    try {
-      await ImageStorage.instance.migrateImagesFromExternalStorage(
+    await BackupRestoreUtils.runWithLoadingStatus(context, (updateStatus) {
+      return AttachmentStorage.instance.migrateImagesFromExternalStorage(
         updateStatus: (migrated, total) {
           if (!mounted) return;
-          statusNotifier.value = AppLocalizations.of(context)!
-              .migratingImagesStatus(migrated, total);
+          updateStatus(AppLocalizations.of(context)!
+              .migratingImagesStatus(migrated, total));
         },
       );
-    } finally {
-      if (mounted) Navigator.of(context).pop();
-    }
+    });
   }
 
-  Future<void> _forceLocalDatabase() async {
-    setState(() {
-      isLoading = true;
-    });
+  Future _forceLocalDatabase() async {
     try {
-      // Disconnect unavailable external storage so the app safely defaults to local storage
-      await AppDatabase.instance.resetExternalLocation();
-      await ImageStorage.instance.resetImageFolderLocation();
-
-      final initialized =
-          await AppDatabase.instance.init(forceWithoutSync: true);
-      if (initialized) {
-        await _nextPage();
-        return;
-      }
+      await AppDatabase.instance.init(forceWithoutSync: true);
+      await _nextPage();
     } catch (error, stackTrace) {
       _logger.severe(
           'Forced local database initialization failed', error, stackTrace);
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+      });
     }
-    if (!mounted) return;
-    setState(() {
-      isLoading = false;
-      _errorType = AppDatabase.instance.migrationFailed
-          ? _LaunchErrorType.migrationFailed
-          : _LaunchErrorType.externalAccess;
-    });
-  }
-
-  Future<void> _selectAnotherLocation() async {
-    setState(() {
-      isLoading = true;
-    });
-    try {
-      final outcome =
-          await AppDatabase.instance.selectExternalLocation((_) {});
-      if (outcome.succeeded) {
-        if (ImageStorage.instance.usingExternalLocation() &&
-            !await ImageStorage.instance.hasExternalLocationPermission()) {
-          await ImageStorage.instance.selectExternalLocation((_) {});
-        }
-        await _checkDatabaseConnection();
-        return;
-      }
-    } catch (error, stackTrace) {
-      _logger.severe(
-          'Selecting another external location failed', error, stackTrace);
-    }
-    if (!mounted) return;
-    setState(() {
-      isLoading = false;
-    });
   }
 
   Future<void> _nextPage() async {
@@ -282,35 +261,23 @@ class _LaunchPageState extends State<LaunchPage> {
     return Scaffold(
       extendBody: true,
       body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Card(
-            elevation: 2,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    description,
-                    style: const TextStyle(fontSize: 15),
-                  ),
-                  const SizedBox(height: 24),
-                  ...actions,
-                ],
+        child: Card(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                title,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-            ),
+              Padding(
+                padding: EdgeInsets.all(32.0),
+                child: Text(
+                  description,
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+              ...actions,
+            ],
           ),
         ),
       ),
@@ -337,25 +304,20 @@ class _LaunchPageState extends State<LaunchPage> {
                 child: Text(localizations.errorReport)),
           ],
         );
+      case _LaunchErrorType.appOutdated:
+        return _buildErrorScaffold(
+          title: localizations.databaseNewerErrorTitle,
+          description: localizations.databaseNewerErrorDescription,
+          actions: const [],
+        );
       case _LaunchErrorType.externalAccess:
         return _buildErrorScaffold(
           title: localizations.errorExternalStorageAccessTitle,
           description: localizations.errorExternalStorageAccessDescription,
           actions: [
-            FilledButton.tonal(
-              onPressed: _forceLocalDatabase,
-              child: Text(localizations.errorExternalStorageAccessContinue),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: _selectAnotherLocation,
-              child: Text(localizations.errorExternalStorageChooseLocation),
-            ),
-            const SizedBox(height: 8),
             TextButton(
-              onPressed: _retryDatabaseConnection,
-              child: Text(localizations.databaseMigrationErrorRetry),
-            ),
+                onPressed: _forceLocalDatabase,
+                child: Text(localizations.errorExternalStorageAccessContinue)),
           ],
         );
     }

@@ -1,8 +1,11 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'dart:math' as math;
 
 import 'package:daily_you/models/entry.dart';
 import 'package:daily_you/models/tag.dart';
-import 'package:word_count/word_count.dart';
 
 const List<String> _weekdayKeys = [
   'Mon',
@@ -13,33 +16,6 @@ const List<String> _weekdayKeys = [
   'Sat',
   'Sun',
 ];
-
-int totalWordCount(List<Entry> entries) {
-  var total = 0;
-  for (final entry in entries) {
-    total += wordsCount(entry.text);
-  }
-  return total;
-}
-
-int greatDayCount(List<Entry> entries) {
-  final greatDays = <DateTime>{};
-  for (final entry in entries) {
-    if (entry.mood == null || entry.mood! < 1) continue;
-    final date = entry.timeCreate;
-    greatDays.add(DateTime(date.year, date.month, date.day));
-  }
-  return greatDays.length;
-}
-
-Map<int, int> moodTotals(List<Entry> entries) {
-  final totals = {-2: 0, -1: 0, 0: 0, 1: 0, 2: 0};
-  for (final entry in entries) {
-    if (entry.mood == null) continue;
-    totals.update(entry.mood!, (count) => count + 1);
-  }
-  return totals;
-}
 
 /// Averages [valueOf] per weekday. A weekday with no contributing entries
 /// resolves to [emptyDayValue] so charts can tell "no data that day" apart from

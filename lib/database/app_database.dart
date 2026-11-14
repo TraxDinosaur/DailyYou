@@ -1,29 +1,41 @@
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
 import 'dart:io';
+import 'package:daily_you/models/image.dart';
+import 'package:daily_you/models/song.dart';
+import 'package:daily_you/models/location.dart';
+import 'package:daily_you/models/space.dart';
+import 'package:daily_you/models/person.dart';
+import 'package:daily_you/providers/entry_songs_provider.dart';
+import 'package:daily_you/providers/entry_locations_provider.dart';
+import 'package:daily_you/providers/spaces_provider.dart';
+import 'package:daily_you/providers/people_provider.dart';
 
 import 'package:daily_you/config_provider.dart';
-import 'package:daily_you/database/image_storage.dart';
+import 'package:daily_you/database/attachment_storage.dart';
+import 'package:daily_you/database/mood_scale_dao.dart';
 import 'package:daily_you/l10n/generated/app_localizations.dart';
 import 'package:daily_you/storage/external_sync_health.dart';
+import 'package:daily_you/storage/external_sync_settings.dart';
 import 'package:daily_you/storage/file_store.dart';
 import 'package:daily_you/storage/local_file_store.dart';
-import 'package:daily_you/storage/storage_picker.dart';
+import 'package:daily_you/storage/sync_item.dart';
 import 'package:daily_you/utils/operation_outcome.dart';
 import 'package:daily_you/utils/generated/tag_icon_registry.dart';
 import 'package:daily_you/models/entry.dart';
-import 'package:daily_you/models/image.dart';
-import 'package:daily_you/models/location.dart';
-import 'package:daily_you/models/person.dart';
-import 'package:daily_you/models/song.dart';
-import 'package:daily_you/models/space.dart';
+import 'package:daily_you/models/mood.dart';
+import 'package:daily_you/models/mood_scale_level.dart';
+import 'package:daily_you/models/mood_scale_preset.dart';
+import 'package:daily_you/models/attachment.dart';
 import 'package:daily_you/models/tag.dart';
 import 'package:daily_you/models/tag_category.dart';
 import 'package:daily_you/models/template.dart';
 import 'package:daily_you/providers/entries_provider.dart';
-import 'package:daily_you/providers/entry_images_provider.dart';
-import 'package:daily_you/providers/entry_locations_provider.dart';
-import 'package:daily_you/providers/entry_songs_provider.dart';
-import 'package:daily_you/providers/people_provider.dart';
-import 'package:daily_you/providers/spaces_provider.dart';
+import 'package:daily_you/providers/entry_attachments_provider.dart';
+import 'package:daily_you/providers/mood_scale_provider.dart';
+import 'package:daily_you/providers/stats_layout_provider.dart';
 import 'package:daily_you/providers/tags_provider.dart';
 import 'package:daily_you/providers/templates_provider.dart';
 import 'package:easy_debounce/easy_debounce.dart';
@@ -33,6 +45,17 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+
+class DatabaseNewerThanAppException implements Exception {
+  final int databaseVersion;
+
+  const DatabaseNewerThanAppException(this.databaseVersion);
+
+  @override
+  String toString() =>
+      'Database schema version $databaseVersion is newer than the supported '
+      'version ${AppDatabase.schemaVersion}';
+}
 
 class AppDatabase {
   static final AppDatabase instance = AppDatabase._init();
@@ -52,6 +75,8 @@ class AppDatabase {
   /// [init] but failed.
   bool migrationFailed = false;
 
+  bool databaseReplacedThisSession = false;
+
   static Database? _database;
   Database? get database => _database;
 
@@ -62,13 +87,16 @@ class AppDatabase {
 
   FileStore get internalStore => LocalFileStore(dirname(_internalPath!));
 
-  FileStore? get externalStore =>
-      usingExternalLocation() ? FileStore.external(getExternalPath()) : null;
+  FileStore? get externalStore {
+    final location = ExternalSyncSettings.load().location(SyncItem.logs);
+    return location == null ? null : FileStore.external(location.uri);
+  }
 
   Future<bool> init(
       {bool forceWithoutSync = false, bool allowMigration = true}) async {
     _internalPath = await getInternalPath();
     migrationFailed = false;
+    databaseReplacedThisSession = false;
     bool success = true;
 
     if (Platform.isAndroid && allowMigration) {
@@ -89,15 +117,7 @@ class AppDatabase {
 
     if (usingExternalLocation() && !forceWithoutSync) {
       if (await hasExternalLocationPermission()) {
-        try {
-          await _syncWithExternalDatabase();
-        } catch (error, stackTrace) {
-          _logger.warning(
-              'Syncing with external database failed, falling back to local database',
-              error,
-              stackTrace);
-          success = false;
-        }
+        await _syncWithExternalDatabase();
       } else {
         success = false;
       }
@@ -142,46 +162,93 @@ class AppDatabase {
     }
   }
 
+  static const schemaVersion = 10;
+
   Future<void> open() async {
-    _database = await openDatabase(
-      _internalPath!,
-      version: 9,
-      onCreate: _createDatabase,
-      onUpgrade: _onUpgrade,
-      onDowngrade: _onDowngrade,
-    );
+    _database = await openDatabase(_internalPath!,
+        version: schemaVersion,
+        onCreate: _createDatabase,
+        onUpgrade: onUpgrade,
+        onDowngrade: (db, oldVersion, newVersion) =>
+            throw DatabaseNewerThanAppException(oldVersion));
 
     await EntriesProvider.instance.load();
-    await EntryImagesProvider.instance.load();
+    await EntryAttachmentsProvider.instance.load();
+    await AttachmentStorage.instance.migrateLegacyVideoFiles();
     await EntrySongsProvider.instance.load();
     await EntryLocationsProvider.instance.load();
     await SpacesProvider.instance.load();
     await PeopleProvider.instance.load();
     await TemplatesProvider.instance.load();
     await TagsProvider.instance.load();
+    await MoodScaleProvider.instance.load();
+    await StatsLayoutProvider.instance.load();
   }
 
   Future<void> close() async {
     final db = _database!;
     _database = null;
-    db.close();
+    await db.close();
   }
 
-  Future<bool> validateDatabase(String path) async {
-    return await _validateSqliteDatabase(path);
+  Future<void> replaceDatabase(File replacement) async {
+    const previousName = '$databaseFileName.previous';
+    final store = LocalFileStore(dirname(_internalPath!));
+    await close();
+    var movedAside = false;
+    try {
+      await store.delete(previousName);
+      movedAside = await store.rename(databaseFileName, previousName);
+      await store.writeAtomically(databaseFileName, (temporary) async {
+        await replacement.copy(temporary.path);
+        return true;
+      });
+      await open();
+    } catch (_) {
+      if (_database != null) await close();
+      if (movedAside) await store.rename(previousName, databaseFileName);
+      await open();
+      rethrow;
+    }
+    await store.delete(previousName);
   }
 
   Future<bool> _validateSqliteDatabase(String path) async {
     try {
       final db = await openDatabase(path, readOnly: true);
-      final result = await db.rawQuery("PRAGMA integrity_check;");
-      await db.close();
-
-      return result.first.values.first == "ok";
+      try {
+        final result = await db.rawQuery("PRAGMA integrity_check;");
+        return result.first.values.first == "ok";
+      } finally {
+        await db.close();
+      }
     } catch (error, stackTrace) {
       _logger.warning(
           'Database integrity check failed for $path', error, stackTrace);
       return false;
+    }
+  }
+
+  Future<bool> canOpen(String path) async {
+    if (!await _validateSqliteDatabase(path)) return false;
+    final db = await openDatabase(path, readOnly: true);
+    try {
+      final version = await db.getVersion();
+      if (version > schemaVersion) throw DatabaseNewerThanAppException(version);
+      return version > 0 && await _tableExists(db, entriesTable);
+    } finally {
+      await db.close();
+    }
+  }
+
+  Future<int> countEntries(String path) async {
+    final database = await openDatabase(path, readOnly: true);
+    try {
+      return Sqflite.firstIntValue(
+              await database.rawQuery('SELECT COUNT(*) FROM $entriesTable')) ??
+          0;
+    } finally {
+      await database.close();
     }
   }
 
@@ -200,9 +267,8 @@ class AppDatabase {
     return false;
   }
 
-  bool usingExternalLocation() {
-    return ConfigProvider.instance.get(Settings.useExternalDb);
-  }
+  bool usingExternalLocation() =>
+      ExternalSyncSettings.load().location(SyncItem.logs) != null;
 
   Future<String> getInternalPath() async {
     final basePath = await getApplicationSupportDirectory();
@@ -210,72 +276,37 @@ class AppDatabase {
     return join(basePath.path, databaseFileName);
   }
 
-  String getExternalPath() {
-    return ConfigProvider.instance.get(Settings.externalDbUri);
-  }
-
   /// Return whether the app has permission to access the external location
   Future<bool> hasExternalLocationPermission() async {
     return await externalStore?.isAvailable() ?? false;
   }
 
-  Future<OperationOutcome> selectExternalLocation(
-      Function(String) updateStatus) async {
-    bool databaseUpdated = false;
+  Future<OperationOutcome> syncFromExternalLocation() async {
     var outcome = const OperationOutcome.succeeded();
-
-    // Save old external path
-    var oldExternalPath = getExternalPath();
-    var oldUseExternalPath = usingExternalLocation();
-    await _database!.close();
+    await close();
 
     try {
-      var selectedDirectory = await StoragePicker.pickDirectory();
-      if (selectedDirectory == null) {
-        outcome = const OperationOutcome.cancelled();
-      } else {
-        await ConfigProvider.instance
-            .set(Settings.externalDbUri, selectedDirectory.uri);
-        await ConfigProvider.instance.set(Settings.useExternalDb, true);
-
-        // Sync with external folder
-        databaseUpdated = await _syncWithExternalDatabase(forceOverwrite: true);
-        if (!databaseUpdated) outcome = const OperationOutcome.failed();
+      if (!await _syncWithExternalDatabase(forceOverwrite: true)) {
+        outcome = const OperationOutcome.failed();
       }
     } catch (error, stackTrace) {
       _logger.severe(
-          'Selecting an external database location failed', error, stackTrace);
+          'Syncing with the external database failed', error, stackTrace);
       outcome = OperationOutcome.failed(error);
     }
 
-    // Cleanup
     await open();
-    if (!databaseUpdated) {
-      // Restore state after failure
-      await ConfigProvider.instance
-          .set(Settings.externalDbUri, oldExternalPath);
-      await ConfigProvider.instance
-          .set(Settings.useExternalDb, oldUseExternalPath);
-    } else {
-      try {
-        if (ImageStorage.instance.usingExternalLocation() &&
-            await ImageStorage.instance.hasExternalLocationPermission()) {
-          await ImageStorage.instance
-              .syncImageFolder(true, updateStatus: updateStatus);
-        }
-      } catch (error, stackTrace) {
-        _logger.severe(
-            'Syncing images after the database location changed failed',
-            error,
-            stackTrace);
-        outcome = OperationOutcome.failed(error);
-      }
-    }
     return outcome;
   }
 
-  Future<void> resetExternalLocation() async {
-    await ConfigProvider.instance.set(Settings.useExternalDb, false);
+  Future<bool> hasExternalDatabase(String uri) async {
+    try {
+      return await FileStore.external(uri).exists(databaseFileName);
+    } catch (error, stackTrace) {
+      _logger.warning(
+          'Could not look for a database in $uri', error, stackTrace);
+      return true;
+    }
   }
 
   /// Overwrite the external database with local changes
@@ -330,12 +361,19 @@ class AppDatabase {
       await internalStore.write(temporaryName, externalBytes);
 
       final temporaryPath = join(dirname(_internalPath!), temporaryName);
-      if (await _validateSqliteDatabase(temporaryPath)) {
-        return internalStore.rename(temporaryName, databaseFileName);
+      var accepted = false;
+      try {
+        accepted = await canOpen(temporaryPath);
+        if (accepted) {
+          final replaced =
+              await internalStore.rename(temporaryName, databaseFileName);
+          if (replaced) databaseReplacedThisSession = true;
+          return replaced;
+        }
+        return false;
+      } finally {
+        if (!accepted) await internalStore.delete(temporaryName);
       }
-
-      await internalStore.delete(temporaryName);
-      return false;
     }
     return true;
   }
@@ -355,11 +393,18 @@ class AppDatabase {
   // SQLite Database Actions
 
   Future _createDatabase(Database db, int version) async {
+    databaseReplacedThisSession = true;
     _database = db;
     await createSchema(db);
     await TemplatesProvider.instance.createDefaultTemplates();
-    await TagsProvider.instance.createDefaultTags();
+    await _createDefaultTags();
+    await MoodScaleDao.save(MoodScalePreset.emoji.levels, executor: db);
     await createWelcomeEntry();
+  }
+
+  Future<void> _createDefaultTags() async {
+    final pinnedTagIds = await TagsProvider.instance.createDefaultTags();
+    await StatsLayoutProvider.instance.replace(pinnedTagIds);
   }
 
   Future<void> createSchema(Database db) async {
@@ -382,22 +427,21 @@ CREATE TABLE $templatesTable (
 )
 ''');
     await db.execute('''
-CREATE TABLE $imagesTable (
-    ${EntryImageFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    ${EntryImageFields.entryId} INTEGER NOT NULL,
-    ${EntryImageFields.imgPath} TEXT NOT NULL,
-    ${EntryImageFields.imgRank} INTEGER NOT NULL,
-    ${EntryImageFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
-    FOREIGN KEY (${EntryImageFields.entryId}) REFERENCES $entriesTable (id)
+CREATE TABLE $attachmentsTable (
+    ${EntryAttachmentFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    ${EntryAttachmentFields.entryId} INTEGER NOT NULL,
+    ${EntryAttachmentFields.type} TEXT NOT NULL,
+    ${EntryAttachmentFields.filePath} TEXT NOT NULL,
+    ${EntryAttachmentFields.rank} INTEGER NOT NULL,
+    ${EntryAttachmentFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
+    FOREIGN KEY (${EntryAttachmentFields.entryId}) REFERENCES $entriesTable (id)
 )
 ''');
 
     await _createTagTables(db);
+    await _createMoodScaleLevelsTable(db);
     await _createTemplateTagTable(db);
-    await _createSongTables(db);
-    await _createLocationTable(db);
-    await _createSpaceTables(db);
-    await _createPeopleTables(db);
+    await _ensureHybridSchema(db);
   }
 
   @visibleForTesting
@@ -418,7 +462,7 @@ CREATE TABLE $imagesTable (
     final welcomeEntry = await EntriesProvider.instance.add(
       Entry(
         text: l10n.welcomeLogBodyText,
-        mood: 1,
+        mood: Mood.pleasant,
         timeCreate: now,
         timeModified: now,
       ),
@@ -427,17 +471,19 @@ CREATE TABLE $imagesTable (
 
     final imageBytes =
         await rootBundle.load('assets/daily_you_First_Steps.webp');
-    final imageName = await ImageStorage.instance.create(
+    final imageName = await AttachmentStorage.instance.create(
       'daily_you_First_Steps.webp',
       imageBytes.buffer.asUint8List(),
+      AttachmentType.image,
       currTime: now,
     );
     if (imageName != null) {
-      await EntryImagesProvider.instance.add(
-        EntryImage(
+      await EntryAttachmentsProvider.instance.add(
+        EntryAttachment(
           entryId: welcomeEntry.id,
-          imgPath: imageName,
-          imgRank: 0,
+          type: AttachmentType.image,
+          filePath: imageName,
+          rank: 0,
           timeCreate: now,
         ),
         skipUpdate: true,
@@ -468,25 +514,9 @@ CREATE TABLE $imagesTable (
     }
   }
 
-  Future<bool> _tableExists(DatabaseExecutor db, String tableName) async {
-    final result = await db.rawQuery(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-      [tableName],
-    );
-    return result.isNotEmpty;
-  }
-
-  Future<bool> _columnExists(
-      DatabaseExecutor db, String tableName, String columnName) async {
-    if (!await _tableExists(db, tableName)) return false;
-    final columns = await db.rawQuery('PRAGMA table_info($tableName)');
-    return columns.any((c) =>
-        c['name']?.toString().toLowerCase() == columnName.toLowerCase());
-  }
-
-  Future<void> _createTagTables(DatabaseExecutor db) async {
+  Future<void> _createTagTables(Database db) async {
     await db.execute('''
-CREATE TABLE IF NOT EXISTS $tagCategoriesTable (
+CREATE TABLE $tagCategoriesTable (
     ${TagCategoryFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     ${TagCategoryFields.icon} TEXT,
     ${TagCategoryFields.iconType} INTEGER NOT NULL DEFAULT 0,
@@ -495,11 +525,11 @@ CREATE TABLE IF NOT EXISTS $tagCategoriesTable (
     ${TagCategoryFields.sortOrder} INTEGER NOT NULL DEFAULT 0,
     ${TagCategoryFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
     ${TagCategoryFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now'))
-);
+)
 ''');
 
     await db.execute('''
-CREATE TABLE IF NOT EXISTS $tagsTable (
+CREATE TABLE $tagsTable (
     ${TagFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     ${TagFields.categoryId} INTEGER,
     ${TagFields.icon} TEXT,
@@ -511,11 +541,11 @@ CREATE TABLE IF NOT EXISTS $tagsTable (
     ${TagFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
     ${TagFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now')),
     FOREIGN KEY (${TagFields.categoryId}) REFERENCES $tagCategoriesTable (id)
-);
+)
 ''');
 
     await db.execute('''
-CREATE TABLE IF NOT EXISTS $entryTagsTable (
+CREATE TABLE $entryTagsTable (
     ${EntryTagFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     ${EntryTagFields.entryId} INTEGER NOT NULL,
     ${EntryTagFields.tagId} INTEGER NOT NULL,
@@ -523,21 +553,178 @@ CREATE TABLE IF NOT EXISTS $entryTagsTable (
     ${EntryTagFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
     FOREIGN KEY (${EntryTagFields.entryId}) REFERENCES $entriesTable (id),
     FOREIGN KEY (${EntryTagFields.tagId}) REFERENCES $tagsTable (id)
-);
+)
 ''');
   }
 
-  Future<void> _createTemplateTagTable(DatabaseExecutor db) async {
+  Future<void> _createMoodScaleLevelsTable(Database db) async {
     await db.execute('''
-CREATE TABLE IF NOT EXISTS $templateTagsTable (
+CREATE TABLE $moodScaleTable (
+  ${MoodScaleLevelFields.mood} INTEGER NOT NULL PRIMARY KEY,
+  ${MoodScaleLevelFields.label} TEXT,
+  ${MoodScaleLevelFields.icon} TEXT,
+  ${MoodScaleLevelFields.iconType} INTEGER NOT NULL DEFAULT 0,
+  ${MoodScaleLevelFields.color} INTEGER
+)
+''');
+  }
+
+  Future<void> _createTemplateTagTable(Database db) async {
+    await db.execute('''
+CREATE TABLE $templateTagsTable (
     ${TemplateTagFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     ${TemplateTagFields.templateId} INTEGER NOT NULL,
     ${TemplateTagFields.tagId} INTEGER NOT NULL,
     ${TemplateTagFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
     FOREIGN KEY (${TemplateTagFields.templateId}) REFERENCES $templatesTable (id),
     FOREIGN KEY (${TemplateTagFields.tagId}) REFERENCES $tagsTable (id)
-);
+)
 ''');
+  }
+
+  @visibleForTesting
+  Future<void> onUpgrade(Database db, int oldVersion, int newVersion) async {
+    _database = db;
+    // In this case, oldVersion is 1, newVersion is 2
+    if (oldVersion == 1) {
+      await db.execute('''
+CREATE TABLE $templatesTable (
+  ${TemplatesFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  ${TemplatesFields.name} TEXT NOT NULL,
+  ${TemplatesFields.text} TEXT,
+  ${TemplatesFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
+  ${TemplatesFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now'))
+)
+''');
+
+      await TemplatesProvider.instance.createDefaultTemplates();
+    }
+    if (oldVersion <= 2) {
+      await db.execute('''
+CREATE TABLE entry_images (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    entry_id INTEGER NOT NULL,
+    img_path TEXT NOT NULL,
+    img_rank INTEGER NOT NULL,
+    time_create DATETIME NOT NULL DEFAULT (DATETIME('now')),
+    FOREIGN KEY (entry_id) REFERENCES $entriesTable (id)
+)
+''');
+      await db.transaction((txn) async {
+        await txn.execute('''
+-- Step 1: Insert the non-null imgPath entries into entry_images
+INSERT INTO entry_images (entry_id, img_path, img_rank, time_create)
+SELECT ${EntryFields.id}, $deprecatedImgPath, 0, ${EntryFields.timeCreate}
+FROM $entriesTable
+WHERE $deprecatedImgPath IS NOT NULL;
+    ''');
+
+        await txn.execute('''
+-- Step 2: Rename the old entries table
+ALTER TABLE $entriesTable RENAME TO old_entries;
+    ''');
+
+        await txn.execute('''
+-- Step 3: Create a new entries table without the imgPath field
+CREATE TABLE $entriesTable (
+  ${EntryFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  ${EntryFields.text} TEXT NOT NULL,
+  ${EntryFields.mood} INTEGER,
+  ${EntryFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
+  ${EntryFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now'))
+);
+    ''');
+
+        await txn.execute('''
+-- Step 4: Copy data from the old entries table to the new one
+INSERT INTO $entriesTable (${EntryFields.id}, ${EntryFields.text}, ${EntryFields.mood}, ${EntryFields.timeCreate}, ${EntryFields.timeModified})
+SELECT ${EntryFields.id}, ${EntryFields.text}, ${EntryFields.mood}, ${EntryFields.timeCreate}, ${EntryFields.timeModified}
+FROM old_entries;
+    ''');
+
+        await txn.execute('''
+-- Step 5: Drop the old entries table
+DROP TABLE old_entries;
+    ''');
+      });
+    }
+    if (oldVersion <= 3) {
+      await _createTagTables(db);
+      await _createDefaultTags();
+    }
+    if (oldVersion <= 4) {
+      await _createTemplateTagTable(db);
+    }
+    // An older app that pulled a version 6 database relabels it as version 5
+    if (!await _tableExists(db, attachmentsTable)) {
+      await db.execute('''
+CREATE TABLE $attachmentsTable (
+    ${EntryAttachmentFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    ${EntryAttachmentFields.entryId} INTEGER NOT NULL,
+    ${EntryAttachmentFields.type} TEXT NOT NULL,
+    ${EntryAttachmentFields.filePath} TEXT NOT NULL,
+    ${EntryAttachmentFields.rank} INTEGER NOT NULL,
+    ${EntryAttachmentFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
+    FOREIGN KEY (${EntryAttachmentFields.entryId}) REFERENCES $entriesTable (id)
+)
+''');
+      if (await _tableExists(db, imagesTable)) {
+        await db.transaction((txn) async {
+          await txn.execute('''
+INSERT INTO $attachmentsTable (${EntryAttachmentFields.id}, ${EntryAttachmentFields.entryId}, ${EntryAttachmentFields.type}, ${EntryAttachmentFields.filePath}, ${EntryAttachmentFields.rank}, ${EntryAttachmentFields.timeCreate})
+SELECT id, entry_id,
+CASE WHEN lower(img_path) GLOB '*.mp4' OR lower(img_path) GLOB '*.mov'
+  OR lower(img_path) GLOB '*.mkv' OR lower(img_path) GLOB '*.webm'
+  OR lower(img_path) GLOB '*.avi' OR lower(img_path) GLOB '*.m4v'
+  OR lower(img_path) GLOB '*.3gp' THEN 'video' ELSE 'image' END,
+img_path, img_rank, time_create
+FROM entry_images
+WHERE img_path IS NOT NULL AND img_path != ''
+ORDER BY id;
+    ''');
+          await txn.execute(
+              "DELETE FROM sqlite_sequence WHERE name = '$attachmentsTable';");
+          await txn.execute('''
+INSERT INTO sqlite_sequence (name, seq)
+SELECT '$attachmentsTable', seq FROM sqlite_sequence WHERE name = 'entry_images';
+    ''');
+          await txn.execute('DROP TABLE entry_images;');
+        });
+      }
+    }
+    if (!await _tableExists(db, moodScaleTable)) {
+      await _createMoodScaleLevelsTable(db);
+      await db.execute('''
+UPDATE $entriesTable SET ${EntryFields.mood} = ${EntryFields.mood} + 3
+WHERE ${EntryFields.mood} IS NOT NULL
+''');
+      await MoodScaleDao.save(_legacyMoodScaleLevels(), executor: db);
+    }
+    await _ensureHybridSchema(db);
+  }
+
+  List<MoodScaleLevel> _legacyMoodScaleLevels() => [
+        for (final (position, level) in MoodScalePreset.emoji.levels.indexed)
+          level.copyWith(
+            icon: ConfigProvider.instance
+                .get<String>(Settings.legacyMoodIcons[position]),
+          ),
+      ];
+
+  Future<bool> _tableExists(DatabaseExecutor db, String name) async {
+    final rows = await db.query('sqlite_master',
+        columns: ['name'],
+        where: "type = 'table' AND name = ?",
+        whereArgs: [name]);
+    return rows.isNotEmpty;
+  }
+
+  Future<bool> _columnExists(
+      DatabaseExecutor db, String tableName, String columnName) async {
+    if (!await _tableExists(db, tableName)) return false;
+    final columns = await db.rawQuery('PRAGMA table_info($tableName)');
+    return columns.any(
+        (c) => c['name']?.toString().toLowerCase() == columnName.toLowerCase());
   }
 
   Future<void> _createSongTables(DatabaseExecutor db) async {
@@ -632,21 +819,6 @@ CREATE TABLE IF NOT EXISTS $entryPeopleTable (
 ''');
   }
 
-  Future<void> _ensureSchemaElements(DatabaseExecutor db) async {
-    await _createTagTables(db);
-    await _createTemplateTagTable(db);
-    await _createSongTables(db);
-    await _createLocationTable(db);
-    await _createSpaceTables(db);
-    await _createPeopleTables(db);
-
-    if (await _tableExists(db, entrySongsTable) &&
-        !await _columnExists(db, entrySongsTable, EntrySongFields.album)) {
-      await db.execute(
-          'ALTER TABLE $entrySongsTable ADD COLUMN ${EntrySongFields.album} TEXT;');
-    }
-  }
-
   Future<void> _sanitizePortedPaths(DatabaseExecutor db) async {
     try {
       if (await _tableExists(db, imagesTable)) {
@@ -707,122 +879,31 @@ CREATE TABLE IF NOT EXISTS $entryPeopleTable (
     }
   }
 
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    _database = db;
-    _logger.info('Upgrading database from v$oldVersion to v$newVersion');
-
-    if (oldVersion < 2) {
-      if (!await _tableExists(db, templatesTable)) {
-        await db.execute('''
-CREATE TABLE IF NOT EXISTS $templatesTable (
-  ${TemplatesFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-  ${TemplatesFields.name} TEXT NOT NULL,
-  ${TemplatesFields.text} TEXT,
-  ${TemplatesFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
-  ${TemplatesFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now'))
-);
-''');
-        await TemplatesProvider.instance.createDefaultTemplates();
-      }
+  Future<void> _ensureHybridSchema(Database db) async {
+    await _createSongTables(db);
+    if (!await _columnExists(db, entrySongsTable, EntrySongFields.album)) {
+      await db.execute('ALTER TABLE $entrySongsTable ADD COLUMN album TEXT');
     }
-
-    if (oldVersion < 3) {
-      await db.execute('''
-CREATE TABLE IF NOT EXISTS $imagesTable (
-    ${EntryImageFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    ${EntryImageFields.entryId} INTEGER NOT NULL,
-    ${EntryImageFields.imgPath} TEXT NOT NULL,
-    ${EntryImageFields.imgRank} INTEGER NOT NULL,
-    ${EntryImageFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
-    FOREIGN KEY (${EntryImageFields.entryId}) REFERENCES $entriesTable (id)
-);
-''');
-      if (await _columnExists(db, entriesTable, deprecatedImgPath)) {
-        await db.transaction((txn) async {
-          await txn.execute('''
-INSERT INTO $imagesTable (${EntryImageFields.entryId}, ${EntryImageFields.imgPath}, ${EntryImageFields.imgRank}, ${EntryImageFields.timeCreate})
-SELECT ${EntryFields.id}, $deprecatedImgPath, 0, ${EntryFields.timeCreate}
-FROM $entriesTable
-WHERE $deprecatedImgPath IS NOT NULL;
-''');
-          await txn.execute('ALTER TABLE $entriesTable RENAME TO old_entries;');
-          await txn.execute('''
-CREATE TABLE $entriesTable (
-  ${EntryFields.id} INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-  ${EntryFields.text} TEXT NOT NULL,
-  ${EntryFields.mood} INTEGER,
-  ${EntryFields.timeCreate} DATETIME NOT NULL DEFAULT (DATETIME('now')),
-  ${EntryFields.timeModified} DATETIME NOT NULL DEFAULT (DATETIME('now'))
-);
-''');
-          await txn.execute('''
-INSERT INTO $entriesTable (${EntryFields.id}, ${EntryFields.text}, ${EntryFields.mood}, ${EntryFields.timeCreate}, ${EntryFields.timeModified})
-SELECT ${EntryFields.id}, ${EntryFields.text}, ${EntryFields.mood}, ${EntryFields.timeCreate}, ${EntryFields.timeModified}
-FROM old_entries;
-''');
-          await txn.execute('DROP TABLE old_entries;');
-        });
-      }
-    }
-
-    if (oldVersion < 4) {
-      await _createTagTables(db);
-      if (await _tableExists(db, tagsTable)) {
-        final count = Sqflite.firstIntValue(
-                await db.rawQuery('SELECT COUNT(*) FROM $tagsTable')) ??
-            0;
-        if (count == 0) {
-          await TagsProvider.instance.createDefaultTags();
-        }
-      }
-    }
-
-    if (oldVersion < 5) {
-      await _createTemplateTagTable(db);
-    }
-
-    if (oldVersion < 6) {
-      await _createSongTables(db);
-    }
-
-    if (oldVersion < 7) {
-      await _createLocationTable(db);
-    }
-
-    if (oldVersion < 8) {
-      if (await _tableExists(db, entrySongsTable) &&
-          !await _columnExists(db, entrySongsTable, EntrySongFields.album)) {
-        await db.execute(
-            'ALTER TABLE $entrySongsTable ADD COLUMN ${EntrySongFields.album} TEXT;');
-      }
-    }
-
-    if (oldVersion < 9) {
-      await _createSpaceTables(db);
-      await _createPeopleTables(db);
-    }
-
-    await _ensureSchemaElements(db);
+    await _createLocationTable(db);
+    await _createSpaceTables(db);
+    await _createPeopleTables(db);
     await _sanitizePortedPaths(db);
-  }
-
-  Future<void> _onDowngrade(Database db, int oldVersion, int newVersion) async {
-    _logger.warning(
-        'Database downgrade requested from v$oldVersion to v$newVersion; preserving data');
-    _database = db;
-    await _ensureSchemaElements(db);
-    await _sanitizePortedPaths(db);
+    for (final row in await db.query(attachmentsTable)) {
+      final path = row[EntryAttachmentFields.filePath] as String;
+      final fileName = basename(path.replaceAll('\\', '/'));
+      if (fileName != path) {
+        await db.update(
+            attachmentsTable, {EntryAttachmentFields.filePath: fileName},
+            where: '${EntryAttachmentFields.id} = ?',
+            whereArgs: [row[EntryAttachmentFields.id]]);
+      }
+    }
   }
 
   @visibleForTesting
   Future<void> testOnUpgrade(Database db, int oldVersion, int newVersion) =>
-      _onUpgrade(db, oldVersion, newVersion);
+      onUpgrade(db, oldVersion, newVersion);
 
   @visibleForTesting
-  Future<void> testOnDowngrade(Database db, int oldVersion, int newVersion) =>
-      _onDowngrade(db, oldVersion, newVersion);
-
-  @visibleForTesting
-  Future<void> testSanitizePortedPaths(DatabaseExecutor db) =>
-      _sanitizePortedPaths(db);
+  Future<void> testSanitizePortedPaths(Database db) => _sanitizePortedPaths(db);
 }

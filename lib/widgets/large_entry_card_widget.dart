@@ -1,8 +1,16 @@
-import 'package:daily_you/config_provider.dart';
-import 'package:daily_you/models/image.dart';
+// Copyright (C) 2026 Demizo and contributors
+// SPDX-License-Identifier: GPL-3.0-only
+// Additional terms under GPLv3 section 7 apply; see ADDITIONAL_TERMS.md.
+
+import 'package:daily_you/models/attachment.dart';
 import 'package:daily_you/time_manager.dart';
+import 'package:daily_you/utils/entry_semantics_label.dart';
+import 'package:daily_you/utils/search_text_window.dart';
+import 'package:daily_you/utils/text_highlight.dart';
+import 'package:daily_you/widgets/bottom_fade.dart';
+import 'package:daily_you/widgets/entry_card_widget.dart';
 import 'package:daily_you/widgets/entry_card_header_row.dart';
-import 'package:daily_you/widgets/image_grid.dart';
+import 'package:daily_you/widgets/attachment_grid.dart';
 import 'package:daily_you/widgets/scaled_markdown.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:daily_you/l10n/generated/app_localizations.dart';
@@ -18,6 +26,7 @@ class LargeCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card.filled(
+      margin: const EdgeInsets.all(entryCardMargin),
       color: Theme.of(context).colorScheme.surfaceContainer,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       clipBehavior: Clip.antiAlias,
@@ -29,7 +38,7 @@ class LargeCard extends StatelessWidget {
           if (media != null)
             Expanded(
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(entryCardCornerRadius),
                 child: media,
               ),
             ),
@@ -38,25 +47,13 @@ class LargeCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (header != null)
-                    Padding(
-                      padding: const EdgeInsets.all(2.0),
-                      child: header,
-                    )
-                  else
-                    const SizedBox(height: 8),
+                  if (header != null) header! else const SizedBox(height: 8),
                   if (body != null)
                     Expanded(
-                      child: ShaderMask(
-                        shaderCallback: (Rect bounds) {
-                          return const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Colors.black, Colors.transparent],
-                            stops: [0.8, 0.95],
-                          ).createShader(bounds);
-                        },
-                        blendMode: BlendMode.dstIn,
+                      child: BottomFade(
+                        color: Theme.of(context).colorScheme.surfaceContainer,
+                        start: 0.8,
+                        end: 0.95,
                         child: ClipRect(
                           clipBehavior: Clip.hardEdge,
                           child: Padding(
@@ -75,17 +72,20 @@ class LargeCard extends StatelessWidget {
     );
   }
 
-  static Widget markdownBody(String text) =>
-      ConfigProvider.instance.get(Settings.markdownEnabled)
-          ? ScaledMarkdown(
-              data: text,
-              maxCharacters: 500,
-              scaleFactor: 0.95,
-            )
-          : Text(
-              text,
-              style: const TextStyle(fontSize: 14),
-            );
+  static Widget markdownBody(
+    String text, {
+    TextHighlight highlight = TextHighlight.none,
+  }) =>
+      OverflowBox(
+        alignment: AlignmentDirectional.topStart,
+        maxHeight: double.infinity,
+        child: ScaledMarkdown(
+          data: text,
+          maxCharacters: 500,
+          scaleFactor: 0.95,
+          highlight: highlight,
+        ),
+      );
 }
 
 class LargeEntryCardWidget extends StatelessWidget {
@@ -93,36 +93,46 @@ class LargeEntryCardWidget extends StatelessWidget {
     super.key,
     this.title,
     required this.entry,
-    required this.images,
+    required this.attachments,
     this.hideImage = false,
+    this.highlight = TextHighlight.none,
   });
 
   final Entry entry;
-  final List<EntryImage> images;
+  final List<EntryAttachment> attachments;
   final String? title;
   final bool hideImage;
+  final TextHighlight highlight;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final time = TimeManager.formatDate(entry.timeCreate, context);
-    return LargeCard(
-      media: images.isNotEmpty && !hideImage ? ImageGrid(images: images) : null,
-      header: EntryCardHeaderRow(
-        entry: entry,
-        title: title == null ? time : title!,
-        titlePadding: const EdgeInsets.only(left: 4.0),
-        titleStyle: TextStyle(
-          color: theme.textTheme.labelSmall?.color,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      body: entry.text.isNotEmpty
-          ? LargeCard.markdownBody(entry.text)
-          : Text(
-              AppLocalizations.of(context)!.writeSomethingHint,
-              style: TextStyle(color: theme.disabledColor, fontSize: 16),
+    final cardTitle =
+        title ?? TimeManager.formatDate(entry.timeCreate, context);
+    return Semantics(
+        label: entrySemanticsLabel(context, entry, cardTitle),
+        excludeSemantics: true,
+        child: LargeCard(
+          media: attachments.isNotEmpty && !hideImage
+              ? AttachmentGrid(attachments: attachments)
+              : null,
+          header: EntryCardHeaderRow(
+            entry: entry,
+            title: cardTitle,
+            titleStyle: TextStyle(
+              color: theme.textTheme.labelSmall?.color,
+              fontWeight: FontWeight.bold,
             ),
-    );
+          ),
+          body: entry.text.isNotEmpty
+              ? LargeCard.markdownBody(
+                  searchTextWindow(entry.text, highlight),
+                  highlight: highlight,
+                )
+              : Text(
+                  AppLocalizations.of(context)!.writeSomethingHint,
+                  style: TextStyle(color: theme.disabledColor, fontSize: 16),
+                ),
+        ));
   }
 }
