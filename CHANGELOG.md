@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1 — 2026-11-15
+
+- Fix Spaces & People remaining light in dark mode by using the application's Material theme components for the page, controls and dialogs.
+- Add regression coverage for both tabs, live light/dark theme changes, and creation dialogs.
+
+Validation: the new regression test reproduced the light background before the fix; both Spaces/People widget tests now pass. Scoped Dart analysis reports no issues. The signed release APK builds with version code `10010010` and the same certificate as v1.1.0. Physical-device testing remains unverified.
+
 ## 1.1.0 — 2026-11-15
 
 - Synchronize Daily You through v3.10.0 and its current gallery/search improvements.

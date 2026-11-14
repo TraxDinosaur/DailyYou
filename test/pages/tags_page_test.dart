@@ -13,7 +13,8 @@ import 'package:daily_you/providers/mood_scale_provider.dart';
 import 'package:daily_you/providers/spaces_provider.dart';
 import 'package:daily_you/providers/tags_provider.dart';
 import 'package:daily_you/widgets/large_entry_card_widget.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' as legacy;
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -22,6 +23,80 @@ import '../support/config_provider_harness.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   useTemporaryConfig();
+
+  testWidgets('Spaces and People follow the app theme and live theme changes',
+      (tester) async {
+    SpacesProvider.instance.spaces.clear();
+    SpacesProvider.instance.entrySpaces.clear();
+    PeopleProvider.instance.people.clear();
+    PeopleProvider.instance.entryPeople.clear();
+    EntryStore.instance.entries = [];
+    final light = ThemeData.light();
+    final dark = ThemeData.dark();
+
+    Widget app(ThemeMode mode) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: SpacesProvider.instance),
+            ChangeNotifierProvider.value(value: PeopleProvider.instance),
+            ChangeNotifierProvider.value(value: EntriesProvider.instance),
+            ChangeNotifierProvider.value(
+                value: EntryAttachmentsProvider.instance),
+          ],
+          child: MaterialApp(
+            theme: light,
+            darkTheme: dark,
+            themeMode: mode,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const SpacesAndPeoplePage(),
+          ),
+        );
+
+    void expectSurface(ThemeData theme, String title) {
+      // Inspect painted canvas colors, including the legacy widget family,
+      // so this catches a light page embedded in a dark material_ui app.
+      final canvases = find.descendant(
+        of: find.byType(SpacesAndPeoplePage),
+        matching: find.byWidgetPredicate((widget) =>
+            (widget is Material && widget.type == MaterialType.canvas) ||
+            (widget is legacy.Material &&
+                widget.type == legacy.MaterialType.canvas)),
+      );
+      expect((tester.widget(canvases.first) as dynamic).color,
+          theme.scaffoldBackgroundColor);
+      expect(tester.widget<Text>(find.text(title)).style?.color,
+          theme.textTheme.titleMedium?.color);
+    }
+
+    await tester.pumpWidget(app(ThemeMode.dark));
+    await tester.pumpAndSettle();
+    expectSurface(dark, 'No Spaces created yet');
+    await tester.tap(find.text('People'));
+    await tester.pumpAndSettle();
+    expectSurface(dark, 'Who was there? (@name)');
+    await tester.tap(find.widgetWithText(ActionChip, 'Add Person'));
+    await tester.pumpAndSettle();
+    expect(find.text('Name'), findsOneWidget);
+    expect(Theme.of(tester.element(find.byType(AlertDialog))).brightness,
+        Brightness.dark);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(app(ThemeMode.light));
+    await tester.pumpAndSettle();
+    expectSurface(light, 'Who was there? (@name)');
+    await tester.pumpWidget(app(ThemeMode.dark));
+    await tester.pumpAndSettle();
+    expectSurface(dark, 'Who was there? (@name)');
+    await tester.tap(find.text('Spaces'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ActionChip, 'Create Space'));
+    await tester.pumpAndSettle();
+    expect(find.text('New Space'), findsOneWidget);
+    expect(Theme.of(tester.element(find.byType(AlertDialog))).brightness,
+        Brightness.dark);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+  });
 
   testWidgets('SpacesAndPeoplePage displays Spaces and People tabs',
       (tester) async {
@@ -76,7 +151,8 @@ void main() {
           ChangeNotifierProvider.value(value: PeopleProvider.instance),
           ChangeNotifierProvider.value(value: TagsProvider.instance),
           ChangeNotifierProvider.value(value: EntriesProvider.instance),
-          ChangeNotifierProvider.value(value: EntryAttachmentsProvider.instance),
+          ChangeNotifierProvider.value(
+              value: EntryAttachmentsProvider.instance),
           ChangeNotifierProvider.value(value: EntryLocationsProvider.instance),
         ],
         child: const MaterialApp(

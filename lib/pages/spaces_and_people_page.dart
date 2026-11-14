@@ -10,7 +10,7 @@ import 'package:daily_you/providers/people_provider.dart';
 import 'package:daily_you/providers/spaces_provider.dart';
 import 'package:daily_you/time_manager.dart';
 import 'package:daily_you/widgets/large_entry_card_widget.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 
 enum SpacesPeopleTab { spaces, people }

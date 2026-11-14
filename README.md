@@ -31,7 +31,7 @@ No accounts, no ads, no trackers, and no subscription paywalls your journal belo
 
 ## ✨ What's New in this Edition
 
-**Hybrid Edition 1.1.0** synchronizes the current Daily You and June changes: richer media, statistics, fuzzy search, gallery filters and bulk actions, plus settings backup and Day One/StoryPad imports. Existing hybrid journal data and features are preserved. See the [changelog](CHANGELOG.md) and [upstream synchronization report](UPSTREAM_SYNC.md).
+**Hybrid Edition 1.1.1** includes the Spaces & People dark-mode fix alongside the current Daily You and June changes: richer media, statistics, fuzzy search, gallery filters and bulk actions, plus settings backup and Day One/StoryPad imports. Existing hybrid journal data and features are preserved. See the [changelog](CHANGELOG.md) and [upstream synchronization report](UPSTREAM_SYNC.md).
 
 Building upon the original Daily You foundation, this release introduces major new features inspired by June while keeping both apps completely distinct:
 
